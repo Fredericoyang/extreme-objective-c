@@ -1,0 +1,58 @@
+//
+//  PrefixHeader.pch
+//  ExtremeFramework
+//
+//  Created by Fredericoyang on 2017/8/1.
+//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//
+
+#ifndef PrefixHeader_pch
+#define PrefixHeader_pch
+
+// Include any system framework and library headers here that should be included in all compilation units.
+// You will also need to set the Prefix Header build setting of one or more of your targets to reference this file.
+
+//MARK: - extreme
+//MARK: Pods
+#import "PodHeaders.h"
+
+//MARK: Basic
+#import "EFConfig.h"
+#import "EFMacros.h"
+#import "EFUtils.h"
+
+//MARK: Base
+#import "EFBaseNavigationController.h"
+#import "EFBaseTitleView.h"
+#import "EFBaseBarButtonItemCustomView.h"
+#import "NSTimer+EFBlockSupport.h"
+
+//MARK: Model
+#import "BaseDataModel.h"
+
+//MARK: Base VC
+#import "EFBaseViewController.h"
+#import "EFBaseWebViewController.h"
+#import "EFBaseTableViewCell.h"
+#import "EFBaseTableViewController.h"
+
+
+//MARK: - App Tools
+#import "AppConfig.h"
+#import "AppMacros.h"
+#import "AppUtils.h"
+
+//MARK: Tools
+#import "AppRequestURLs.h"
+#import "AFHTTPTool/AppHTTPTool.h"
+#import "ImageUploadTool/ImageUploadTool.h"
+#import "LABiometryTool/LABiometryTool.h"
+
+//MARK: Web view tool
+#import "WebTool/NormalBaseWebViewController.h"
+#import "WebTool/ActivityBaseWebViewController.h"
+
+//MARK: UIKit
+#import "EFUIKit/EFNavigationBar/EFNavigationBar.h"
+
+#endif /* PrefixHeader_pch */

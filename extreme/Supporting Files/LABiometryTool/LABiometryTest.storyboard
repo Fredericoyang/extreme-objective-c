@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="14313.18" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="aqA-Dm-RLZ">
+    <device id="retina4_7" orientation="portrait">
+        <adaptation id="fullscreen"/>
+    </device>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14283.14"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--集成指纹/面容验证-->
+        <scene sceneID="4cf-xM-FAf">
+            <objects>
+                <viewController storyboardIdentifier="LABiometryTest_VC" id="aqA-Dm-RLZ" customClass="LABiometryTest_VC" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="5Vh-FV-BfT">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="GXU-6z-rre">
+                                <rect key="frame" x="156.5" y="318.5" width="62" height="30"/>
+                                <state key="normal" title="验证一下"/>
+                                <connections>
+                                    <action selector="tapToTry:" destination="aqA-Dm-RLZ" eventType="touchUpInside" id="Gp5-nd-wuR"/>
+                                </connections>
+                            </button>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="" textAlignment="natural" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="HGs-u9-sV7">
+                                <rect key="frame" x="15" y="84" width="345" height="0.0"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                        </subviews>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                        <constraints>
+                            <constraint firstItem="HGs-u9-sV7" firstAttribute="centerX" secondItem="GXU-6z-rre" secondAttribute="centerX" id="0Qg-si-EZv"/>
+                            <constraint firstItem="GXU-6z-rre" firstAttribute="centerY" secondItem="5Vh-FV-BfT" secondAttribute="centerY" id="JTK-cB-qof"/>
+                            <constraint firstItem="GXU-6z-rre" firstAttribute="centerX" secondItem="5Vh-FV-BfT" secondAttribute="centerX" id="MeZ-wF-AeF"/>
+                            <constraint firstItem="HGs-u9-sV7" firstAttribute="leading" secondItem="5Vh-FV-BfT" secondAttribute="leading" constant="15" id="mbE-Jv-Uh1"/>
+                            <constraint firstItem="HGs-u9-sV7" firstAttribute="top" secondItem="hTp-gx-ajF" secondAttribute="top" constant="20" id="vi6-uA-Nke"/>
+                            <constraint firstAttribute="trailing" secondItem="HGs-u9-sV7" secondAttribute="trailing" constant="15" id="yW0-1X-UoJ"/>
+                        </constraints>
+                        <viewLayoutGuide key="safeArea" id="hTp-gx-ajF"/>
+                    </view>
+                    <navigationItem key="navigationItem" title="集成指纹/面容验证" id="4qB-bz-EY2"/>
+                    <simulatedNavigationBarMetrics key="simulatedTopBarMetrics" prompted="NO"/>
+                    <connections>
+                        <outlet property="result_label" destination="HGs-u9-sV7" id="Fik-oI-kiw"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="ck5-wa-Jyc" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="44" y="195"/>
+        </scene>
+    </scenes>
+</document>

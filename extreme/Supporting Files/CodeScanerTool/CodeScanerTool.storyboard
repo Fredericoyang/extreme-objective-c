@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="17156" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="h43-2f-ahc">
+    <device id="retina4_7" orientation="portrait" appearance="light"/>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="17125"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--Code ScanerNC-->
+        <scene sceneID="Lsh-M7-4Se">
+            <objects>
+                <navigationController storyboardIdentifier="CodeScaner_NC" modalPresentationStyle="fullScreen" id="h43-2f-ahc" customClass="CodeScaner_NC" sceneMemberID="viewController">
+                    <navigationBar key="navigationBar" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" id="GMd-y9-rDj" customClass="EFNavigationBar">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="44"/>
+                        <autoresizingMask key="autoresizingMask"/>
+                        <userDefinedRuntimeAttributes>
+                            <userDefinedRuntimeAttribute type="boolean" keyPath="dark" value="YES"/>
+                        </userDefinedRuntimeAttributes>
+                    </navigationBar>
+                    <connections>
+                        <segue destination="0Qz-Hs-iSM" kind="relationship" relationship="rootViewController" id="EvI-TW-jLA"/>
+                    </connections>
+                </navigationController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="Isd-AJ-Rcv" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="-874" y="184"/>
+        </scene>
+        <!--扫码-->
+        <scene sceneID="er0-hg-KKV">
+            <objects>
+                <viewController id="0Qz-Hs-iSM" customClass="CodeScanerTool" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="fJK-hD-d3e">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="extreme.bundle/Message_Scanner_mivingCursor.png" translatesAutoresizingMaskIntoConstraints="NO" id="zDG-eT-A7j">
+                                <rect key="frame" x="88" y="214" width="199" height="17"/>
+                                <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.0" colorSpace="custom" customColorSpace="sRGB"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="199" id="t5Q-k6-UfO"/>
+                                    <constraint firstAttribute="height" constant="17" id="wAm-mM-lCa"/>
+                                </constraints>
+                                <variation key="default">
+                                    <mask key="constraints">
+                                        <exclude reference="t5Q-k6-UfO"/>
+                                        <exclude reference="wAm-mM-lCa"/>
+                                    </mask>
+                                </variation>
+                                <variation key="heightClass=regular-widthClass=compact">
+                                    <mask key="constraints">
+                                        <include reference="t5Q-k6-UfO"/>
+                                        <include reference="wAm-mM-lCa"/>
+                                    </mask>
+                                </variation>
+                            </imageView>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="extreme.bundle/Message_Scanner_DisplayFrame" translatesAutoresizingMaskIntoConstraints="NO" id="xWT-nz-ESh">
+                                <rect key="frame" x="78" y="214" width="219" height="199"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="199" id="IGR-X3-946"/>
+                                    <constraint firstAttribute="width" constant="219" id="y37-5U-ZxZ"/>
+                                </constraints>
+                                <variation key="default">
+                                    <mask key="constraints">
+                                        <exclude reference="IGR-X3-946"/>
+                                        <exclude reference="y37-5U-ZxZ"/>
+                                    </mask>
+                                </variation>
+                                <variation key="heightClass=regular-widthClass=compact">
+                                    <mask key="constraints">
+                                        <include reference="IGR-X3-946"/>
+                                        <include reference="y37-5U-ZxZ"/>
+                                    </mask>
+                                </variation>
+                            </imageView>
+                        </subviews>
+                        <viewLayoutGuide key="safeArea" id="wka-aG-V6F"/>
+                        <color key="backgroundColor" systemColor="lightTextColor"/>
+                        <constraints>
+                            <constraint firstItem="xWT-nz-ESh" firstAttribute="top" secondItem="wka-aG-V6F" secondAttribute="top" constant="170" id="BN9-2b-5Xp"/>
+                            <constraint firstItem="zDG-eT-A7j" firstAttribute="top" secondItem="xWT-nz-ESh" secondAttribute="top" id="SYK-cO-fyP"/>
+                            <constraint firstItem="zDG-eT-A7j" firstAttribute="centerX" secondItem="xWT-nz-ESh" secondAttribute="centerX" id="U7L-hj-L11"/>
+                            <constraint firstItem="xWT-nz-ESh" firstAttribute="centerX" secondItem="fJK-hD-d3e" secondAttribute="centerX" id="YMG-n3-hXz"/>
+                        </constraints>
+                    </view>
+                    <navigationItem key="navigationItem" title="扫码" id="fqP-xe-lSz"/>
+                    <connections>
+                        <outlet property="imageFrame" destination="xWT-nz-ESh" id="Lgl-kQ-cNw"/>
+                        <outlet property="imageFrameTopSpace" destination="BN9-2b-5Xp" id="XDo-1w-lIS"/>
+                        <outlet property="imageLine" destination="zDG-eT-A7j" id="Gbs-uY-O8G"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="Iq9-7v-WW8" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="-28" y="183.95802098950526"/>
+        </scene>
+    </scenes>
+    <designables>
+        <designable name="GMd-y9-rDj">
+            <size key="intrinsicContentSize" width="-1" height="44"/>
+        </designable>
+    </designables>
+    <resources>
+        <image name="extreme.bundle/Message_Scanner_DisplayFrame" width="16" height="16"/>
+        <image name="extreme.bundle/Message_Scanner_mivingCursor.png" width="16" height="16"/>
+        <systemColor name="lightTextColor">
+            <color white="1" alpha="0.59999999999999998" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+        </systemColor>
+    </resources>
+</document>

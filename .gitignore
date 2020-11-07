@@ -1,0 +1,9 @@
+extreme.xcworkspace/xcuserdata/
+extreme.xcodeproj/xcuserdata/
+build/XCBuildData/
+build/Release-iphoneos/extreme.build/
+build/Release-iphoneos/extreme.framework/
+build/Release-iphonesimulator/extreme.build/
+build/Release-iphonesimulator/extreme.framework/
+Pods/
+Podfile.lock

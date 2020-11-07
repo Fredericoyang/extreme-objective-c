@@ -1,0 +1,6 @@
+framework module extreme {
+  umbrella header "extreme.h"
+
+  export *
+  module * { export * }
+}
