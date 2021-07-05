@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/8/1.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "AppHTTPTool.h"
@@ -45,7 +45,7 @@
                         [SVProgressHUD showErrorWithStatus:http_error.errorDescription];
                     });
                 }
-                else if ([http_error.errorCode isEqualToString:expired_token] || [http_error.errorCode isEqualToString:incorrect_token]) { // token失效或不正确
+                else if ([http_error.errorCode isEqualToString:statusCode_expiredToken] || [http_error.errorCode isEqualToString:statusCode_incorrectToken]) { // token失效或不正确
                     [AppUtils presentLoginVC];
                 }
                 result(NO, http_error);
@@ -85,7 +85,7 @@
                         [SVProgressHUD showErrorWithStatus:http_error.errorDescription];
                     });
                 }
-                else if ([http_error.errorCode isEqualToString:expired_token] || [http_error.errorCode isEqualToString:incorrect_token]) {
+                else if ([http_error.errorCode isEqualToString:statusCode_expiredToken] || [http_error.errorCode isEqualToString:statusCode_incorrectToken]) {
                     [AppUtils presentLoginVC];
                 }
                 result(NO, http_error);
@@ -118,7 +118,7 @@
                         [SVProgressHUD showErrorWithStatus:http_error.errorDescription];
                     });
                 }
-                else if ([http_error.errorCode isEqualToString:expired_token] || [http_error.errorCode isEqualToString:incorrect_token]) {
+                else if ([http_error.errorCode isEqualToString:statusCode_expiredToken] || [http_error.errorCode isEqualToString:statusCode_incorrectToken]) {
                     [AppUtils presentLoginVC];
                 }
                 result(NO, http_error);
@@ -150,7 +150,7 @@
                         [SVProgressHUD showErrorWithStatus:http_error.errorDescription];
                     });
                 }
-                else if ([http_error.errorCode isEqualToString:expired_token] || [http_error.errorCode isEqualToString:incorrect_token]) {
+                else if ([http_error.errorCode isEqualToString:statusCode_expiredToken] || [http_error.errorCode isEqualToString:statusCode_incorrectToken]) {
                     [AppUtils presentLoginVC];
                 }
                 result(NO, http_error);
@@ -182,7 +182,7 @@
                         [SVProgressHUD showErrorWithStatus:http_error.errorDescription];
                     });
                 }
-                else if ([http_error.errorCode isEqualToString:expired_token] || [http_error.errorCode isEqualToString:incorrect_token]) {
+                else if ([http_error.errorCode isEqualToString:statusCode_expiredToken] || [http_error.errorCode isEqualToString:statusCode_incorrectToken]) {
                     [AppUtils presentLoginVC];
                 }
                 result(NO, http_error);

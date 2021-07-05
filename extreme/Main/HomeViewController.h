@@ -3,12 +3,12 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2018/4/20.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 @interface HomeViewController : EFBaseViewController
 
-@property (weak, nonatomic) IBOutlet UIButton *list_button;
+@property (weak, nonatomic) IBOutlet EFButton *list_button;
 
 - (IBAction)list:(id)sender;
 

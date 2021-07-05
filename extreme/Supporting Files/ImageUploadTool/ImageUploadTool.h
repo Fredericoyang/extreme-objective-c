@@ -3,10 +3,9 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/12/22.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
-#import <Foundation/Foundation.h>
 #import "ImageUploadConfig.h"
 
 #define saveJPEGPicture(i, s, t) [ImageUploadTool saveJPEGPicture:(UIImage*)i size:(CGSize)s type:(SAVE_PICTURE_TYPE)t]
@@ -20,14 +19,15 @@ typedef NS_ENUM(NSInteger, SAVE_PICTURE_TYPE) {
 
 @interface AFUploadImageModel : NSObject
 
-// 图片数据(与图片对象任选，优先图片数据)
+/// 图片数据(与图片对象任选，优先图片数据)
 @property (strong, nonatomic, nonnull) NSData *imageData;
-// 图片名称
+/// 图片名称
 @property (copy, nonatomic, nonnull) NSString *imageName;
-// 图片使用的键
+/// 图片使用的键
 @property (copy, nonatomic, nonnull) NSString *key;
 
 @end
+
 
 @interface ImageUploadTool : NSObject
 

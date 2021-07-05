@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/12/22.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "H5Test_VC.h"
@@ -17,21 +17,35 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view.
+    self.url = @"http://www.xfmwk.com";
+    self.needReloadByStep = NO;
 }
 
-- (void)didReceiveMemoryWarning {
-    [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    
+    self.scriptMessageHandlers = @[@"iOS_login"];
 }
 
-/*
-#pragma mark - Navigation
-
-// In a storyboard-based application, you will often want to do a little preparation before navigation
-- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
-    // Get the new view controller using [segue destinationViewController].
-    // Pass the selected object to the new view controller.
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    
+    [self removeAllScriptMessageHandlers];
 }
-*/
+
+
+#pragma mark - WKScriptMessageHandler
+
+- (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
+    [super userContentController:userContentController didReceiveScriptMessage:message];
+    
+    if ([message.name isEqualToString:@"iOS_login"]){
+        dispatch_async(dispatch_get_main_queue(), ^{
+            EFBaseNavigationController *userNC = [EFUtils sharedControllerInstanceWithStoryName:@"Login" andStoryboardID:@"Login_NC"];
+            userNC.originalViewController = self;
+            [self presentViewController:userNC animated:YES completion:nil];
+        });
+    }
+}
 
 @end

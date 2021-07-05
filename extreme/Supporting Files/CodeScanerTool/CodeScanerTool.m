@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2018/10/12.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "CodeScanerTool.h"
@@ -30,7 +30,7 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    [self privacyCameraAuthorizationWithCompletion:^{
+    [self privacyCameraAuthorizationWithCompletionHandler:^{
         [self initScanningContent];
         [self sessionStartRunning];
     }];
@@ -40,14 +40,6 @@
     [super viewWillAppear:animated];
     
     self.navigationBarStyle = EFBarStyleBlack;
-    self.navigationBar.dark = YES;
-}
-
-- (void)viewWillDisappear:(BOOL)animated {
-    [super viewWillDisappear:animated];
-    
-    self.navigationBarStyle = EFBarStyleDefault;
-    self.navigationBar.dark = NO;
 }
 
 
@@ -72,7 +64,6 @@
     if ([session canAddOutput:outPut]) {
         [session addOutput:outPut];
     }
-    
     
     //设置扫描支持的编码格式
     [outPut setMetadataObjectTypes:[outPut availableMetadataObjectTypes]];
@@ -133,8 +124,7 @@
  *  扫描线动画
  *
  *  @param time 单次滑动完成时间
- *  @param y    滑动距离
- *
+ *  @param y       滑动距离
  *  @return 返回动画
  */
 -(CABasicAnimation *)moveY:( float )time Y:( NSNumber *)y {
@@ -147,7 +137,9 @@
     return animation;
 }
 
+
 #pragma mark - AVCaptureMetadataOutputObjectsDelegate
+
 /**
  *  获取扫描到的结果
  *
@@ -161,10 +153,17 @@
             [session stopRunning];
             AVMetadataMachineReadableCodeObject * metadataObject = [metadataObjects objectAtIndex:0];
             if ([metadataObject isKindOfClass:[AVMetadataMachineReadableCodeObject class]]) {
-                if (![EFUtils stringIsNullOrEmpty:metadataObject.stringValue]) {
+                if (![EFUtils stringIsNilOrNullOrEmpty:metadataObject.stringValue]) {
                     _isScaned = YES;
                     //处理条形/二维码
-                    if (_Callback) {
+                    if (_callbackHandler) {
+                        _callbackHandler(metadataObject.stringValue);
+                        RUN_AFTER(SVShowStatusDelayTime, ^{
+                            self->_isScaned = NO;
+                            [self->session startRunning];
+                        });
+                    }
+                    else if (_Callback) {
                         _Callback(metadataObject.stringValue);
                         RUN_AFTER(SVShowStatusDelayTime, ^{
                             self->_isScaned = NO;

@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2018/4/13.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "LABiometryTool.h"
@@ -20,6 +20,7 @@
 }
 
 @end
+
 
 @implementation LABiometryTool {
     LAContext *_context;
@@ -86,23 +87,17 @@
     [self canOwnerAuthorization:^(BOOL success, id resultObject) {
         if (success) {
             NSString *localizedReason = @"";
-            if (@available(iOS 11.0, *)) {
-                switch (self->_context.biometryType) {
-                    case LABiometryTypeNone:
-                        break;
-                    case LABiometryTypeTouchID:
-                        localizedReason = FORMAT_STRING(@"%@ 需要确认你是本人", description);
-                        self->_context.localizedFallbackTitle = self->_fallbackButtonTitle?:nil;
-                        break;
-                    case LABiometryTypeFaceID:
-                        localizedReason = FORMAT_STRING(@"%@ 需要确认你是本人", description);
-                        self->_context.localizedFallbackTitle = self->_fallbackButtonTitle?:nil;
-                        break;
-                }
-            }
-            else {
-                localizedReason = FORMAT_STRING(@"%@ 需要确认你是本人", description);
-                self->_context.localizedFallbackTitle = self->_fallbackButtonTitle?:nil;
+            switch (self->_context.biometryType) {
+                case LABiometryTypeNone:
+                    break;
+                case LABiometryTypeTouchID:
+                    localizedReason = STRING_FORMAT(@"%@ 需要确认你是本人", description);
+                    self->_context.localizedFallbackTitle = self->_fallbackButtonTitle?:nil;
+                    break;
+                case LABiometryTypeFaceID:
+                    localizedReason = STRING_FORMAT(@"%@ 需要确认你是本人", description);
+                    self->_context.localizedFallbackTitle = self->_fallbackButtonTitle?:nil;
+                    break;
             }
             [self->_context evaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics localizedReason:localizedReason reply:^(BOOL success, NSError *_Nullable error) {
                 self->_context = nil; // 销毁验证实例

@@ -3,57 +3,89 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/8/1.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "EFBaseWebViewController.h"
-#import "EFMacros.h"
+#import "EFUtils.h"
 #import "PodHeaders.h"
 
-@interface EFBaseWebViewController () <UIWebViewDelegate>
+@interface EFBaseWebViewController ()
 
 @end
 
-@implementation EFBaseWebViewController
+@implementation EFBaseWebViewController {
+    WKUserContentController *_userContentController;
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = COLOR_RGB(0xffffff);
+    
+    self.view.backgroundColor = COLOR_HEXSTRING(@"#FFFFFF");
     self.title = @"页面载入中";
     
-    _webView = [[UIWebView alloc] init];
-    _webView.backgroundColor = COLOR_RGB_ALPHA(0xffffff, 0);
-    _webView.delegate = self;
+    //这个类主要用来做 native与 JavaScript的交互管理
+    _userContentController = [[WKUserContentController alloc] init];
+    WKWebViewConfiguration * config = [[WKWebViewConfiguration alloc] init];
+    config.preferences = [[WKPreferences alloc] init];
+    config.preferences.minimumFontSize = 10;
+    config.preferences.javaScriptEnabled = YES;
+    config.preferences.javaScriptCanOpenWindowsAutomatically = NO;
+    config.userContentController = _userContentController;
+    config.processPool = [[WKProcessPool alloc] init];
+    
+    _webView = [[WKWebView alloc] initWithFrame:self.view.frame configuration:config];
+    _webView.scrollView.backgroundColor = COLOR_HEXSTRING_ALPHA(@"#FFFFFF", 0);
+    _webView.allowsBackForwardNavigationGestures = YES;
+    _webView.navigationDelegate = self;
     [self.view sd_addSubviews:@[_webView]];
     
     _webView.sd_layout
-    .spaceToSuperView(UIEdgeInsetsZero);
+    .spaceToSuperView(UIEdgeInsetsMake(0, 0, SAFEAREA_INSETS.bottom, 0));
+    
+    self.navigationItem.leftItemsSupplementBackButton = NO;
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     
-    [SVProgressHUD dismiss];
-    if (self.webView.loading) {
+    if (self.webView.isLoading) {
+        [SVProgressHUD dismiss];
         [self.webView stopLoading];
     }
 }
 
-- (void)didReceiveMemoryWarning {
-    [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
+
+#pragma mark - 加载页面与脚本
+
+- (void)setScriptMessageHandlers:(NSArray *)scriptMessageHandlers {
+    if (!scriptMessageHandlers) {
+        _scriptMessageHandlers = nil;
+        return;
+    }
+    _scriptMessageHandlers = scriptMessageHandlers;
+    for (NSString *message_name in scriptMessageHandlers) {
+        [_userContentController addScriptMessageHandler:self name:message_name];
+    }
 }
 
+- (void)removeAllScriptMessageHandlers {
+    for (NSString *message_name in self.scriptMessageHandlers) {
+        [_userContentController removeScriptMessageHandlerForName:message_name];
+    }
+}
 
 - (void)loadURL:(NSString *)URL_string {
     NSURL *URL = [[NSURL alloc] initWithString:URL_string];
     [_webView loadRequest:[NSURLRequest requestWithURL:URL]];
 }
 
+
 #pragma mark - 导航
+
 - (void)back:(id)sender {
-    [SVProgressHUD dismiss];
-    if (self.webView.loading) {
+    if (self.webView.isLoading) {
+        [SVProgressHUD dismiss];
         [self.webView stopLoading];
     }
     if (self.webView.canGoBack) {
@@ -68,8 +100,8 @@
 }
 
 - (void)close:(id)sender {
-    [SVProgressHUD dismiss];
-    if (self.webView.loading) {
+    if (self.webView.isLoading) {
+        [SVProgressHUD dismiss];
         [self.webView stopLoading];
     }
     if (self.previousViewController) {
@@ -80,21 +112,20 @@
     }
 }
 
-#pragma mark - Web view delegate
-- (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType {
-    if (![request.URL.scheme isEqualToString:@"tel"] && ![request.URL.scheme isEqualToString:@"itms-apps"] && ![request.URL.host isEqualToString:@"coding.net"]) {
+
+#pragma mark - WKNavigationDelegate
+
+- (void)webView:(WKWebView *)webView didCommitNavigation:(WKNavigation *)navigation {
+    if (![webView.URL.scheme isEqualToString:@"tel"] && ![webView.URL.scheme isEqualToString:@"itms-apps"] && ![webView.URL.host isEqualToString:@"coding.net"]) {
         [SVProgressHUD show];
     }
-    return YES;
 }
 
-- (void)webViewDidStartLoad:(UIWebView *)webView {
-    
-}
-
-- (void)webViewDidFinishLoad:(UIWebView *)webView {
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
     [SVProgressHUD dismiss];
-    self.title = [webView stringByEvaluatingJavaScriptFromString:@"document.title"];
+    [webView evaluateJavaScript:@"document.title" completionHandler:^(id _Nullable result, NSError *_Nullable error) {
+        self.title = result;
+    }];
     
     if (self.webView.canGoBack || self.webView.canGoForward) {
         UIBarButtonItem *back_barButtonItem = [[UIBarButtonItem alloc] initWithImage:IMAGE(@"extreme.bundle/back") style:UIBarButtonItemStylePlain target:self action:@selector(back:)];
@@ -103,8 +134,19 @@
     }
 }
 
-- (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error {
-    LOG(@"[ERROR] %@", error.localizedDescription);
+- (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error {
+    LOG_FORMAT(@"[ERROR] %@", error.localizedDescription);
+}
+
+- (void)webViewWebContentProcessDidTerminate:(WKWebView *)webView {
+    [webView reload];
+}
+
+
+#pragma mark - WKScriptMessageHandler
+
+- (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
+    
 }
 
 @end

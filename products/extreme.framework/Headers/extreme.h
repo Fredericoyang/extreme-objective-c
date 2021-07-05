@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2018/6/5.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
@@ -20,8 +20,6 @@ FOUNDATION_EXPORT const unsigned char extremeVersionString[];
 #import <extreme/PodHeaders.h>
 
 //MARK: Basic
-#import <extreme/EFMacros.h>
-#import <extreme/EFConfig.h>
 #import <extreme/EFUtils.h>
 
 //MARK: Base
@@ -31,10 +29,13 @@ FOUNDATION_EXPORT const unsigned char extremeVersionString[];
 #import <extreme/NSTimer+EFBlockSupport.h>
 
 //MARK: Model
+#import <extreme/NSObject+Class.h>
+#import <extreme/NSObject+Coding.h>
 #import <extreme/BaseDataModel.h>
 
 //MARK: Base VC
 #import <extreme/EFBaseViewController.h>
-#import <extreme/EFBaseWebViewController.h>
-#import <extreme/EFBaseTableViewCell.h>
 #import <extreme/EFBaseTableViewController.h>
+#import <extreme/EFBaseTableViewCell.h>
+#import <extreme/EFBaseWebViewController.h>
+#import <extreme/EFBaseModalDialogViewController.h>

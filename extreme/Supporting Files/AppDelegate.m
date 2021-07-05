@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/8/1.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "AppDelegate.h"
@@ -22,7 +22,11 @@
         [USER_DEFAULTS setBool:YES forKey:@"init once"];
     }
     
-    // SVProgressHUD init
+    // Orientation Portrait For Default
+    [USER_DEFAULTS setObject:@(UIInterfaceOrientationMaskPortrait) forKey:@"interface orientation"];
+    [USER_DEFAULTS synchronize];
+    
+    // SVProgressHUD Init
     [SVProgressHUD setForegroundColor:THEME_COLOR];
     [SVProgressHUD setBackgroundColor:THEME_COLOR_LIGHT];
     [SVProgressHUD setDefaultStyle:SVProgressHUDStyleCustom];
@@ -60,8 +64,9 @@
 
 
 #pragma mark - 设置设备可旋转方向
+
 - (UIInterfaceOrientationMask)application:(UIApplication *)application supportedInterfaceOrientationsForWindow:(UIWindow *)window {
-    return UIInterfaceOrientationMaskAll;
+    return ((NSNumber *)[USER_DEFAULTS objectForKey:@"interface orientation"]).unsignedIntegerValue;
 }
 
 @end

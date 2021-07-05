@@ -3,20 +3,25 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/8/1.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
 #import "EFConfig.h"
+#import "EFMacros.h"
+#import "EFBaseNavigationController.h"
 #import <CoreLocation/CoreLocation.h>
+#import <Photos/Photos.h>
+#import <PhotosUI/PhotosUI.h>
 
 @class EFBaseViewController;
 @class EFNavigationBar;
 @class CLLocationManager;
 @class MJRefreshNormalHeader;
 @class MJRefreshBackNormalFooter;
+@class PHChange;
 
-@interface EFBaseTableViewController : UITableViewController
+@interface EFBaseTableViewController : UITableViewController <UIGestureRecognizerDelegate, UINavigationControllerDelegate, UIImagePickerControllerDelegate, PHPickerViewControllerDelegate, PHPhotoLibraryChangeObserver, UITableViewDelegate, UITableViewDataSource>
 
 #pragma mark - 状态栏与导航栏 StatusBar and NavigationBar
 /**
@@ -25,7 +30,7 @@
 @property (assign, nonatomic) BOOL statusBarHidden;
 
 /**
- 导航栏样式，基于 EFConfig中的 EFBarStyle，默认使用 EFBarStyleDefault样式：等同于 UIBarStyleDefault。 (Set the navigationBarStyle as EFBarStyle defined in EFConfig, EFBarStyleDefault as default: same to the UIBarStyleDefault.)
+ 导航栏样式，EFBarStyle于 EFConfig中定义，默认使用 EFBarStyleDefault——等同于 UIBarStyleDefault。 (Set the navigationBarStyle as EFBarStyle defined in EFConfig, EFBarStyleDefault as default, same as UIBarStyleDefault.)
  */
 @property (assign, nonatomic) EFBarStyle navigationBarStyle;
 /**
@@ -34,131 +39,305 @@
 @property (strong, nonatomic, readonly, nullable) EFNavigationBar *navigationBar;
 
 /**
- 使用自定义返回，默认使用 extreme.bundle中的图像“back”，默认不启用。(Use custom back on the NavigationBar, the default image is image named "back" in extreme.bundle, NO as default.)
+ 使用自定义返回，默认使用 extreme.bundle中名为“back”的图像，默认不启用。(Use custom back on the navigation bar, NO as default, default image as image named "back" in extreme.bundle.)
  */
 @property (assign, nonatomic, getter=isUseCustomBack) BOOL useCustomBack;
 /**
- 可在使用自定义返回时自定义返回按钮。(For custom appearance of back button when use custom back.)
+ 可在使用自定义返回时自定义返回按钮。(For custom appearance of the back button when use custom back.)
  */
 @property (strong, nonatomic, nullable) UIBarButtonItem *customBack_barButtonItem;
 /**
- 自定义返回事件回调。(Custom back callback use block.)
+ 自定义返回事件回调。(Custom back callback handler use block.)
  */
-@property (strong, nonatomic, nullable) void(^tapCustomBack)(id _Nonnull sender);
+@property (strong, nonatomic, nullable) void(^customBackHandler)(id _Nonnull sender);
 
 /**
- 可在外部调用时用于自定义取消按钮。(For custom appearance of cancel button when present modally.)
+ 可在外部调用时用于自定义取消按钮。(For custom appearance of the cancel button when present modally.)
  */
 @property (strong, nonatomic, nullable) UIBarButtonItem *customCancel_barButtonItem;
 /**
- 自定义取消事件回调。(Custom cancel callback use block.)
+ 自定义取消事件回调。(Custom cancel callback handler use block.)
  */
-@property (strong, nonatomic, nullable) void(^tapCustomCancel)(id _Nonnull sender);
+@property (strong, nonatomic, nullable) void(^customCancelHandler)(id _Nonnull sender);
 
 /**
- 导航中的上一个控制器。(Previous viewController in navigation controller.)
+ 导航中的上一个控制器。(The previous view controller in navigation controller.)
  */
 @property (strong, nonatomic, nonnull) EFBaseViewController *previousViewController;
 
+//MARK: Deprecated
 /**
- 被嵌入时，嵌入容器的控制器。(The controller who embed this controller.)
+ 属性已在极致框架2.0弃用，使用 customBackHandler 来代替。(Use customBackHandler instead, first deprecated in ExtremeFramework 2.0.)
  */
-@property (strong, nonatomic, nonnull) EFBaseViewController *containerViewController;
-
-
-#pragma mark - 表格高度与输入聚焦 TableView config
+@property (strong, nonatomic, nullable) void(^tapCustomBack)(id _Nonnull sender) EFDeprecated("Use customBackHandler instead, first deprecated in ExtremeFramework 2.0.");
 /**
- TableViewController 被嵌入时，由嵌入者提供高度。(If embed in ViewController, setup on the prepareForSegue:sender: in container view controller who embed it.)
+ 属性已在极致框架2.0弃用，使用 customCancelHandler 来代替。(Use customCancelHandler instead, first deprecated in ExtremeFramework 2.0.)
  */
-@property (assign, nonatomic) CGFloat tableViewHeight;
-
-/**
- 指定滚动的位置。
- */
-@property (assign, nonatomic) CGPoint focusedContentOffset;
-/**
- 调整 tableView的边距以适应键盘，如果设置了 focusedContentOffset还将滚动到指定位置。(Adjust tableView content insets to fit keyboard, if focusedContentOffset setup,  then scroll to it.)
- */
-@property (assign, nonatomic) BOOL adjustTableViewEdgeInsetsToFitKeyboard;
+@property (strong, nonatomic, nullable) void(^tapCustomCancel)(id _Nonnull sender) EFDeprecated("Use customCancelHandler instead, first deprecated in ExtremeFramework 2.0.");
 
 
 #pragma mark - 使用位置 Use location
 /**
- 发起请求位置成功回调。(Success callback use block when request location.)
+ 获得完全访问权限回调。(Callback handler use block, for complete authorization.)
+ */
+typedef void (^_Nullable AuthorizedHandler)(void);
+/**
+ 访问权限被拒回调。(Callback handler use block, for authorization denied.)
+ */
+typedef void (^_Nullable DeniedHandler)(void);
+/**
+ 发起请求位置成功回调。(Success callback handler use block when request location.)
  
  @param locationManager locationManager实例
  */
-typedef void(^_Nullable successHandler)(CLLocationManager *_Nonnull locationManager);
+typedef void (^_Nullable LocationSuccessHandler)(CLLocationManager *_Nonnull locationManager);
 /**
- 发起请求位置失败回调。(Failure callback use block when request location.)
+ 发起请求位置失败回调。(Failure callback handler use block when request location.)
  
  @param locationManager locationManager实例
  @param authorizationStatus 位置授权状态
  */
-typedef void(^_Nullable failureHandler)(CLLocationManager *_Nonnull locationManager, CLAuthorizationStatus authorizationStatus);
+typedef void (^_Nullable LocationFailureHandler)(CLLocationManager *_Nonnull locationManager, CLAuthorizationStatus authorizationStatus);
+
 /**
- 在使用位置的控制器 viewDidLoad中先调用以获取使用位置授权。(Use requestLocationAuthorization: on the viewDidLoad: in the controller who requested location.)
+ 先在使用位置的基于 EFBaseViewController控制器中的 -viewDidLoad 调用以获取使用位置授权。(Use -requestLocationAuthorization: on the -viewDidLoad in the EFBaseViewController based controller first who requested location.)
 
  @param whenInUse Request location whenInUse or always.
  */
 - (void)requestLocationAuthorization:(BOOL)whenInUse;
 /**
- 发起请求位置，并弹框提示用户允许定位权限。 (Just request location.)
+ 未开启精确定位，需要临时请求开启时调用。 (If full accuracy location disabled, request full accuracy location temporary.)
 
- @param successHandler 成功回调
- @param failureHandler 失败回调
+ @param purposeKey 权限申请弹框显示的功能说明所属的 Key
+ @param authorizedHandler 获得精确定位临时访问权限回调
+ @param deniedHandler 精确定位临时访问权限被拒回调
  */
-- (void)requestLocationSuccess:(successHandler)successHandler failure:(failureHandler)failureHandler;
+- (void)requestLocationTemporaryFullAccuracyAuthorizationWithPurposeKey:(NSString *_Nonnull)purposeKey authorizedHandler:(AuthorizedHandler)authorizedHandler deniedHandler:(DeniedHandler)deniedHandler API_AVAILABLE(ios(14));
+
+/**
+ 发起请求定位。 (Just request location.)
+
+ @param locationSuccessHandler 成功回调
+ @param locationFailureHandler 失败回调
+ */
+- (void)requestLocationSuccessHandler:(LocationSuccessHandler)locationSuccessHandler failureHandler:(LocationFailureHandler)locationFailureHandler;
+
+//MARK: Deprecated
+/**
+ 类型已在极致框架2.0弃用，使用 LocationSuccessHandler 来代替。(Use LocationSuccessHandler instead, first deprecated in ExtremeFramework 2.0.)
+ */
+typedef void(^_Nullable successHandler)(CLLocationManager *_Nonnull locationManager) EFDeprecated("Use LocationSuccessHandler instead, first deprecated in ExtremeFramework 2.0.");
+/**
+ 类型已在极致框架2.0弃用，使用 LocationFailureHandler 来代替。(Use LocationFailureHandler instead, first deprecated in ExtremeFramework 2.0.)
+ */
+typedef void(^_Nullable failureHandler)(CLLocationManager *_Nonnull locationManager, CLAuthorizationStatus authorizationStatus) EFDeprecated("Use LocationFailureHandler instead, first deprecated in ExtremeFramework 2.0.");
+
+/**
+ 方法已在极致框架2.0弃用，使用 -requestLocationSuccessHandler:failureHandler: 来代替。(Use -requestLocationSuccessHandler:failureHandler: instead, first deprecated in ExtremeFramework 2.0.)
+ */
+- (void)requestLocationSuccess:(successHandler)successHandler failure:(failureHandler)failureHandler EFDeprecated("Use -requestLocationSuccessHandler:failureHandler: instead, first deprecated in ExtremeFramework 2.0.");
 
 
 #pragma mark - 获取照片 Photo picker
 /**
- ImagePicker 操作回调，适用于任一操作：拍照、选取照片以及取消。(ImagePicker callback use block, for each action: take a picture from camera or library or cancel.)
+ 操作回调。(Callback handler use block.)
  */
-typedef void (^_Nullable completion)(void);
+typedef void (^_Nullable CompletionHandler)(void);
+/**
+ 获得受限照片权限回调。(Callback handler use block, for limited photos authorization.)
+ */
+typedef void (^_Nullable LimitedPhotosHandler)(void);
 /**
  获取隐私-相机权限。(Authorization for privacy use camera.)
  
- @param completion 操作回调
+ @param completionHandler 操作回调
  */
-- (void)privacyCameraAuthorizationWithCompletion:(completion)completion;
+- (void)privacyCameraAuthorizationWithCompletionHandler:(CompletionHandler)completionHandler;
 /**
- 获取隐私-照片权限。(Authorization for privacy use photo library.)
+ 获取隐私-照片图库权限(iOS13或更早系统)。(Authorization for privacy use photo library, prior to iOS 14.)
  
- @param completion 操作回调
+ @param completionHandler 操作回调
  */
-- (void)privacyPhotoLibraryAuthorizationWithCompletion:(completion)completion;
+- (void)privacyPhotoLibraryAuthorizationWithCompletionHandler:(CompletionHandler)completionHandler;
 /**
- 显示选择拍照、选取照片。 (Show the camera/photo library selector.)
+ 获取隐私-照片图库权限(iOS14及更新系统)。(Authorization for privacy use photo library, iOS 14 and future versions.)
+ 
+ @param limitedPhotosHandler 获得受限照片权限回调
+ @param authorizedHandler 获得照片图库完全访问权限回调
+ */
+- (void)privacyPhotoLibraryAuthorizationWithLimitedPhotosHandler:(LimitedPhotosHandler)limitedPhotosHandler authorizedHandler:(AuthorizedHandler)authorizedHandler API_AVAILABLE(ios(14));
+/**
+ 弹出受限照片权限选择照片界面。(Select the photos for limited photos authorization.)
+ */
+- (void)presentLimitedLibraryPicker API_AVAILABLE(ios(14));
+/**
+ 显示选择拍照、选取照片，仅支持选择一张照片。 (Show the camera/photo library selector, photo single selection.)
  
  @param message 提示信息
- @param sourceView 源视图实例，用于iPad
- @param completion 操作回调
  */
-- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message sourceView:(UIView *_Nonnull)sourceView completion:(completion)completion;
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message;
 /**
- 同显示选择拍照、选取照片，可设定拍照默认开启前置还是后置摄像头。(Same as the previous selector: showPhotoPickerWithMessage:sourceView:completion:, set front or rear camera as default when camera on.)
+ 同显示选择拍照、选取照片，仅支持选择一张照片，可设定拍照默认开启前置还是后置摄像头。(Same as the selector: -showPhotoPickerWithMessage:sourceView:completionHandler:, except: you may set front or rear camera as default when camera is on.)
  
  @param message 提示信息
- @param isFront YES 前置摄像头 NO 后置摄像头
- @param sourceView 源视图实例，用于iPad
- @param completion 操作回调
+ @param isCameraDeviceFront YES 前置摄像头 NO 后置摄像头
  */
-- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message isFront:(BOOL)isFront sourceView:(UIView *_Nonnull)sourceView completion:(completion)completion;
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message isCameraDeviceFront:(BOOL)isCameraDeviceFront;
 /**
- 获取照片回调。(Photo picker callback use block.)
+ 显示选择拍照、选取照片，支持选择任意张照片。 (Show the camera/photo library selector, no limited photo multi selection.)
+ 
+ @param message 提示信息
  */
-@property (strong, nonatomic, nullable) void(^photoPickerResult)(UIImagePickerController *_Nonnull imagePicker, NSDictionary *_Nonnull mediaInfo);
+- (void)showPhotoPickerNoPhotoSelectionLimitWithMessage:(NSString *_Nullable)message API_AVAILABLE(ios(14));
+/**
+ 显示选择拍照、选取照片，支持选择最多限定张数的照片。 (Show the camera/photo library selector, limited photo multi selection, maximum selection as you set.)
+ 
+ @param message 提示信息
+ @param photoSelectionLimit 选择照片的数量限制
+ */
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message photoSelectionLimit:(NSUInteger)photoSelectionLimit API_AVAILABLE(ios(14));
+/**
+ 显示选择拍照、选取照片，仅支持选择一张照片。 (Show the camera/photo library selector, photo single selection.)
+ 
+ @param message 提示信息
+ @param sourceView 源视图实例，用于 iPad
+ */
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message sourceView:(UIView *_Nullable)sourceView;
+/**
+ 同显示选择拍照、选取照片，仅支持选择一张照片，可设定拍照默认开启前置还是后置摄像头。(Same as the selector: -showPhotoPickerWithMessage:sourceView:completionHandler:, except: you may set front or rear camera as default when camera is on.)
+ 
+ @param message 提示信息
+ @param isCameraDeviceFront YES 前置摄像头 NO 后置摄像头
+ @param sourceView 源视图实例，用于 iPad
+ */
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message isCameraDeviceFront:(BOOL)isCameraDeviceFront sourceView:(UIView *_Nullable)sourceView;
+/**
+ 显示选择拍照、选取照片，支持选择任意张照片。 (Show the camera/photo library selector, no limited photo multi selection.)
+ 
+ @param message 提示信息
+ @param sourceView 源视图实例，用于 iPad
+ */
+- (void)showPhotoPickerNoPhotoSelectionLimitWithMessage:(NSString *_Nullable)message sourceView:(UIView *_Nullable)sourceView API_AVAILABLE(ios(14));
+/**
+ 显示选择拍照、选取照片，支持选择最多限定张数的照片。 (Show the camera/photo library selector, limited photo multi selection, maximum selection as you set.)
+ 
+ @param message 提示信息
+ @param photoSelectionLimit 选择照片的数量限制
+ @param sourceView 源视图实例，用于 iPad
+ */
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message photoSelectionLimit:(NSUInteger)photoSelectionLimit sourceView:(UIView *_Nullable)sourceView API_AVAILABLE(ios(14));
+/**
+ 显示选择拍照、选取照片，仅支持选择一张照片。 (Show the camera/photo library selector, photo single selection.)
+ 
+ @param message 提示信息
+ @param completionHandler 操作回调
+ */
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message completionHandler:(CompletionHandler)completionHandler;
+/**
+ 同显示选择拍照、选取照片，仅支持选择一张照片，可设定拍照默认开启前置还是后置摄像头。(Same as the selector: -showPhotoPickerWithMessage:sourceView:completionHandler:, except: you may set front or rear camera as default when camera is on.)
+ 
+ @param message 提示信息
+ @param isCameraDeviceFront YES 前置摄像头 NO 后置摄像头
+ @param completionHandler 操作回调
+ */
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message isCameraDeviceFront:(BOOL)isCameraDeviceFront completionHandler:(CompletionHandler)completionHandler;
+/**
+ 显示选择拍照、选取照片，支持选择任意张照片。 (Show the camera/photo library selector, no limited photo multi selection.)
+ 
+ @param message 提示信息
+ @param completionHandler 操作回调
+ */
+- (void)showPhotoPickerNoPhotoSelectionLimitWithMessage:(NSString *_Nullable)message completionHandler:(CompletionHandler)completionHandler API_AVAILABLE(ios(14));
+/**
+ 显示选择拍照、选取照片，支持选择最多限定张数的照片。 (Show the camera/photo library selector, limited photo multi selection, maximum selection as you set.)
+ 
+ @param message 提示信息
+ @param photoSelectionLimit 选择照片的数量限制
+ @param completionHandler 操作回调
+ */
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message photoSelectionLimit:(NSUInteger)photoSelectionLimit completionHandler:(CompletionHandler)completionHandler API_AVAILABLE(ios(14));
+/**
+ 显示选择拍照、选取照片，仅支持选择一张照片。 (Show the camera/photo library selector, photo single selection.)
+ 
+ @param message 提示信息
+ @param sourceView 源视图实例，用于 iPad
+ @param completionHandler 操作回调
+ */
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message sourceView:(UIView *_Nullable)sourceView completionHandler:(CompletionHandler)completionHandler;
+/**
+ 同显示选择拍照、选取照片，仅支持选择一张照片，可设定拍照默认开启前置还是后置摄像头。(Same as the selector: -showPhotoPickerWithMessage:sourceView:completionHandler:, except: you may set front or rear camera as default when camera is on.)
+ 
+ @param message 提示信息
+ @param isCameraDeviceFront YES 前置摄像头 NO 后置摄像头
+ @param sourceView 源视图实例，用于 iPad
+ @param completionHandler 操作回调
+ */
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message isCameraDeviceFront:(BOOL)isCameraDeviceFront sourceView:(UIView *_Nullable)sourceView completionHandler:(CompletionHandler)completionHandler;
+/**
+ 显示选择拍照、选取照片，支持选择任意张照片。 (Show the camera/photo library selector, no limited photo multi selection.)
+ 
+ @param message 提示信息
+ @param sourceView 源视图实例，用于 iPad
+ @param completionHandler 操作回调
+ */
+- (void)showPhotoPickerNoPhotoSelectionLimitWithMessage:(NSString *_Nullable)message sourceView:(UIView *_Nullable)sourceView completionHandler:(CompletionHandler)completionHandler API_AVAILABLE(ios(14));
+/**
+ 显示选择拍照、选取照片，支持选择最多限定张数的照片。 (Show the camera/photo library selector, limited photo multi selection, maximum selection as you set.)
+ 
+ @param message 提示信息
+ @param photoSelectionLimit 选择照片的数量限制
+ @param sourceView 源视图实例，用于 iPad
+ @param completionHandler 操作回调
+ */
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message photoSelectionLimit:(NSUInteger)photoSelectionLimit sourceView:(UIView *_Nullable)sourceView completionHandler:(CompletionHandler)completionHandler API_AVAILABLE(ios(14));
+/**
+ 获取照片回调。(Photo picker callback handler use block.)
+ */
+@property (strong, nonatomic, nullable) void(^photoPickerFinishHandler)(id _Nonnull photoPicker, NSArray<UIImage *> *_Nonnull selectPhotos);
+
+//MARK: Deprecated
+/**
+ 类型已在极致框架2.0弃用，使用 CompletionHandler 来代替。(Use CompletionHandler instead, first deprecated in ExtremeFramework 2.0.)
+ */
+typedef void (^_Nullable completion)(void) EFDeprecated("Use CompletionHandler instead, first deprecated in ExtremeFramework 2.0.");
+/**
+ 方法已在极致框架2.0弃用，使用 -privacyCameraAuthorizationWithCompletionHandler: 来代替。(Use -privacyCameraAuthorizationWithCompletionHandler: instead, first deprecated in ExtremeFramework 2.0.)
+ */
+- (void)privacyCameraAuthorizationWithCompletion:(completion)completion EFDeprecated("Use -privacyCameraAuthorizationWithCompletionHandler: instead, first deprecated in ExtremeFramework 2.0.");
+/**
+ 方法已在极致框架2.0弃用，使用 -privacyPhotoLibraryAuthorizationWithCompletionHandler: 来代替。(Use -privacyPhotoLibraryAuthorizationWithCompletionHandler: instead, first deprecated in ExtremeFramework 2.0.)
+ */
+- (void)privacyPhotoLibraryAuthorizationWithCompletion:(completion)completion EFDeprecated("Use -privacyPhotoLibraryAuthorizationWithCompletionHandler: instead, first deprecated in ExtremeFramework 2.0.");
+/**
+ 方法已在极致框架2.0弃用，使用 -showPhotoPickerWithMessage:sourceView:completionHandler: 来代替。(Use -showPhotoPickerWithMessage:sourceView:completionHandler: instead, first deprecated in ExtremeFramework 2.0.)
+ */
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message sourceView:(UIView *_Nonnull)sourceView completion:(completion)completion EFDeprecated("Use -showPhotoPickerWithMessage:sourceView:completionHandler: instead, first deprecated in ExtremeFramework 2.0.");
+/**
+ 方法已在极致框架2.0弃用，使用 -showPhotoPickerWithMessage:isCameraDeviceFront:sourceView:completionHandler: 来代替。(Use -showPhotoPickerWithMessage:isCameraDeviceFront:sourceView:completionHandler: instead, first deprecated in ExtremeFramework 2.0.)
+ */
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message isFront:(BOOL)isFront sourceView:(UIView *_Nonnull)sourceView completion:(completion)completion EFDeprecated("Use -showPhotoPickerWithMessage:isCameraDeviceFront:sourceView:completionHandler: instead, first deprecated in ExtremeFramework 2.0.");
+/**
+ 属性已在极致框架2.0弃用，使用 photoPickerFinishHandler 来代替。(Use photoPickerFinishHandler instead, first deprecated in ExtremeFramework 2.0.)
+ */
+@property (strong, nonatomic, nullable) void(^photoPickerResult)(UIImagePickerController *_Nonnull imagePicker, NSDictionary *_Nonnull mediaInfo) EFDeprecated("Use photoPickerFinishHandler instead, first deprecated in ExtremeFramework 2.0.");
+
+
+#pragma mark - 录音是否授权
+/**
+获取隐私-麦克风权限。(Authorization for privacy use microphone.)
+
+@param completionHandler 操作回调
+ */
+- (void)privacyMicrophoneAuthorizationWithCompletionHandler:(CompletionHandler)completionHandler;
 
 
 #pragma mark - API调用与数据源 HTTPRequest and manager
 /**
- 如果调用了HTTPTool，每一个数据任务都要都手动添加到这里。(Add every data task you've been created.)
+ 如果调用了 HTTPTool，每一个数据任务都要都手动添加到这里。(Add every data task you've been created to the dataTasks.)
  */
 @property (strong, nonatomic, nullable) NSMutableArray<NSURLSessionDataTask *> *dataTasks;
-
 /**
- 数据源，一般应以model为元素。(The DataSource, element is JSONMODEL based model.)
+ 数据源，一般应以基于 BaseDataModel的 model为元素。(The data source, element is BaseDataModel based model.)
  */
 @property (strong, nonatomic, nullable) NSMutableArray *dataSource_mArray;
 
@@ -193,6 +372,10 @@ typedef void (^_Nullable completion)(void);
  */
 - (void)setNoDataImageName:(NSString *_Nonnull)noDataImageName noDataImageExt:(NSString *_Nullable)noDataImageExt width:(CGFloat)width height:(CGFloat)height;
 
+/// 自定义没有数据提示的文字字体。(For custom text's font of no data view.)
+@property (strong, nonatomic, nullable) UIFont *noDataTextFont;
+/// 自定义没有数据提示的文字颜色。(For custom text's color of no data view.)
+@property (strong, nonatomic, nullable) UIColor *noDataTextColor;
 /**
  自定义没有数据提示的文字，宽度默认 160，行数默认 1。(Use text for no data view, width 160 as default, 1 line as default.)
  */
@@ -221,6 +404,10 @@ typedef void (^_Nullable completion)(void);
 - (void)setNoDataText:(NSString *_Nonnull)noDataText width:(CGFloat)width lines:(NSUInteger)lines;
 
 /**
+ 启用调试图层。(Enable debug layer.)
+ */
+@property (assign, nonatomic) BOOL enableNoDataDebug;
+/**
  显示没有数据提示。
  */
 - (void)showNoData;
@@ -232,20 +419,20 @@ typedef void (^_Nullable completion)(void);
 
 #pragma mark - 刷新与分页支持 Refresh and pageable
 /**
- 启用原生下拉刷新，YES 启用 NO 不启用，启用后需要实现 refresh:方法，默认不启用。(NO as default, if setup YES, override refresh: method.)
+ 启用原生下拉刷新，YES 启用 NO 不启用，启用后需要实现 -refresh:方法，默认不启用。(NO as default, if setup YES, override -refresh: method.)
  */
 @property (assign, nonatomic, getter=isRefreshEnabled) BOOL refreshEnabled;
 
 /**
- 启用下拉刷新与上拉加载更多，YES 启用 NO 不启用，启用后需要实现 loadData和 loadMoreDataWithPageNumber:方法，默认不启用。(NO as default, if setup YES, override loadData and loadMoreDataWithPageNumber: methods.)
+ 启用下拉刷新与上拉加载更多，YES 启用 NO 不启用，启用后需要实现 -loadData和 -loadMoreDataWithPageNumber:方法，默认不启用。(NO as default, if setup YES, override -loadData and -loadMoreDataWithPageNumber: methods.)
  */
 @property (assign, nonatomic, getter=isMJRefreshEnabled) BOOL MJRefreshEnabled;
 /**
- 下拉刷新视图，默认调用 loadData方法，可以自定义执行方法。(Perform method loadData as default, custom a new method if you need.)
+ 下拉刷新视图，默认调用 -loadData方法，可以自定义执行方法。(Perform method -loadData as default, custom a new method if you need.)
  */
 @property (strong, nonatomic, nullable) MJRefreshNormalHeader *refreshHeader;
 /**
- 上拉加载更多视图，默认调用 loadMoreDataWithPageNumber:方法，可以自定义执行方法。(Perform method loadMoreDataWithPageNumber: if can load more data as default, custom a new method if you need.)
+ 上拉加载更多视图，默认调用 -loadMoreDataWithPageNumber:方法，可以自定义执行方法。(Perform method -loadMoreDataWithPageNumber: if can load more data as default, custom a new method if you need.)
  */
 @property (strong, nonatomic, nullable) MJRefreshBackNormalFooter *refreshFooter;
 
@@ -258,5 +445,16 @@ typedef void (^_Nullable completion)(void);
  记录总数。
  */
 @property (assign, nonatomic) NSUInteger rowsCount;
+
+
+#pragma mark - 输入聚焦，用于自带的 tableView。(Use for it's tableView input focus.)
+/**
+ 聚焦的控件。(Setup the focusedControl if you want scroll to it. )
+ */
+@property (strong, nonatomic, nullable) UIView *focusedControl;
+/**
+ 调整 tableView的边距以适应键盘，如果设置了 focusedContentOffset还将滚动到指定位置。(Adjust content insets of the tableView to fit keyboard, if the focusedContentOffset property setup, then scroll to it.)
+ */
+@property (assign, nonatomic) BOOL adjustTableViewEdgeInsetsToFitKeyboard;
 
 @end

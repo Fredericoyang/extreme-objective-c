@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/8/1.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "EFUtils.h"
@@ -11,346 +11,330 @@
 
 @implementation EFUtils
 
-//MARK: 获取 storyboard中控制器的实例
-+ (id)sharedStoryboardInstanceWithStoryName:(NSString *_Nonnull)storyboardName storyboardID:(NSString *_Nonnull)storyboardID {
-    UIStoryboard *storyboardHealthAssistant = [UIStoryboard storyboardWithName:storyboardName bundle:nil];
-    id baseViewController = [storyboardHealthAssistant instantiateViewControllerWithIdentifier:storyboardID];
-    return baseViewController;
-}
+//MARK: - 验证值是否合法 Validate the value
 
-
-//MARK: - 检查字符串值是否合法
-+ (BOOL)checkValue:(NSString *_Nonnull)stringValue byRegExp:(NSString *_Nonnull)regExp {
-    NSPredicate *test=[NSPredicate predicateWithFormat:@"SELF MATCHES %@", regExp];
-    return [test evaluateWithObject:stringValue];
-}
-
-
-//MARK: 对象判空
-+ (BOOL)objectIsNullOrEmpty:(id _Nonnull)object {
++ (BOOL)objectIsNilOrNull:(id _Nonnull)object {
     return (!object || [object isKindOfClass:[NSNull class]]);
 }
 
-//MARK: 字符串判空
-+ (BOOL)stringIsNullOrEmpty:(NSString *_Nonnull)string {
++ (BOOL)stringIsNilOrNullOrEmpty:(NSString *_Nonnull)string {
     return (!string || ![string isKindOfClass:[NSString class]] || !string.length);
 }
 
-//MARK: 指定键值转换为字符串
-+ (NSString *_Nullable)stringFromDictionary:(NSDictionary *_Nonnull)dictionary withKey:(NSString *_Nonnull)key {
-    return [dictionary[key] isKindOfClass:[NSString class]] ? dictionary[key] : (![EFUtils objectIsNull:dictionary withKey:key]?((NSNumber *)dictionary[key]).stringValue:nil);
++ (BOOL)validateString:(NSString *_Nonnull)string byRegExp:(NSString *_Nonnull)regExp {
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", regExp];
+    return [predicate evaluateWithObject:string];
 }
 
-//MARK: 指定键值是否为空
-+ (BOOL)objectIsNull:(NSDictionary *_Nonnull)dictionary withKey:(NSString *_Nonnull)key{
++ (BOOL)objectValueIsNilOrNull:(NSDictionary *_Nonnull)dictionary withKey:(NSString *_Nonnull)key{
     if ([dictionary isKindOfClass:[NSDictionary class]]) {
         id value = dictionary[key];
-        if (![value isKindOfClass:[NSNull class]] && value!=nil) {
-            return NO;
-        }
+        return [EFUtils objectIsNilOrNull:value];
     }
     return YES;
 }
 
-//MARK: 所有键值是否存在空
-+ (BOOL)validDictionary:(NSDictionary *_Nonnull)dictionary {
-    BOOL isNull = NO;
++ (BOOL)objectValueIsEqualTo:(id _Nonnull)value dictionary:(NSDictionary *_Nonnull)dictionary withKey:(NSString *_Nonnull)key {
+    return [dictionary[key] isKindOfClass:[NSString class]] ? ([dictionary[key] integerValue]==[value integerValue]) : (![EFUtils objectValueIsNilOrNull:dictionary withKey:key]?[dictionary[key] integerValue]==[value integerValue]:NO);
+}
+
++ (BOOL)validateDictionary:(NSDictionary *_Nonnull)dictionary {
     if ([dictionary isKindOfClass:[NSDictionary class]]) {
-        NSArray *keys_array = dictionary.allKeys;
-        for (NSString *key in keys_array) {
-            id value = dictionary[key];
-            if ([value isKindOfClass:[NSNull class]]) {
+        __block BOOL isNull = NO;
+        [dictionary enumerateKeysAndObjectsUsingBlock:^(id _Nonnull key, id _Nonnull obj, BOOL * _Nonnull stop) {
+            if ([EFUtils objectIsNilOrNull:obj]) {
                 isNull = YES;
-                break;
             }
-        }
+        }];
+        return !isNull;
     }
-    return isNull;
+    return NO;
 }
 
-//MARK: 指定键值是否等于指定数值
-+ (BOOL)objectValueIsEqualTo:(NSInteger)value dictionary:(NSDictionary *_Nonnull)dictionary withKey:(NSString *_Nonnull)key {
-    return [dictionary[key] isKindOfClass:[NSString class]] ? (((NSString *)dictionary[key]).integerValue==value) : (![EFUtils objectIsNull:dictionary withKey:key]?((NSNumber *)dictionary[key]).integerValue==value:NO);
+
+//MARK: - 转换 Conversions
+
++ (NSString *_Nullable)stringFromDictionary:(NSDictionary *_Nonnull)dictionary withKey:(NSString *_Nonnull)key {
+    return [dictionary[key] isKindOfClass:[NSString class]] ? dictionary[key] : (![EFUtils objectValueIsNilOrNull:dictionary withKey:key]?[dictionary[key] stringValue]:nil);
 }
 
-//MARK: 将NSNumber转换为BOOL
-+ (BOOL)boolValueFromNumber:(NSNumber *)number {
-    if ([number isKindOfClass:[NSNull class]]) {
++ (BOOL)boolValueFromNumber:(NSNumber *_Nullable)number {
+    if ([EFUtils objectIsNilOrNull:number]) {
         return NO;
     }
     return number.boolValue;
 }
 
-
-#pragma mark - Date fomartter 日期格式字符格式化
-+ (NSString *)stringFromDate:(NSDate *_Nonnull)date {
-    return [EFUtils stringFromDate:date dateFormat:@"yyyy-MM-dd HH:mm:ss"];
++ (NSString *_Nullable)JSONToString:(id _Nonnull)json {
+    NSError *error;
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:json
+                                                       options:NSJSONWritingPrettyPrinted
+                                                         error:&error];
+    NSString *jsonString;
+    if (!jsonData) {
+        LOG_FORMAT(@"[FAIL]+JSONToString:, message: %@", error.localizedDescription);
+        return nil;
+    }
+    else {
+        jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    }
+    NSMutableString *mutStr = [NSMutableString stringWithString:jsonString];
+    NSRange range = {0, jsonString.length};
+    //去掉字符串中的空格
+    [mutStr replaceOccurrencesOfString:@" " withString:@"" options:NSLiteralSearch range:range];
+    NSRange range2 = {0, mutStr.length};
+    //去掉字符串中的换行符
+    [mutStr replaceOccurrencesOfString:@"\n" withString:@"" options:NSLiteralSearch range:range2];
+    return mutStr;
 }
 
-+ (NSString *)stringFromDate:(NSDate *_Nonnull)date dateTime:(BOOL)dateTime {
++ (id _Nullable)stringToJSON:(NSString *_Nonnull)jsonString {
+    NSError *error;
+    NSData *jsonData = [jsonString dataUsingEncoding:NSUTF8StringEncoding];
+    if (!jsonData) {
+        return nil;
+    }
+    id json = [NSJSONSerialization JSONObjectWithData:jsonData
+                                              options:NSJSONReadingMutableContainers
+                                                error:&error];
+    if (!json) {
+        LOG_FORMAT(@"[FAIL]+stringToJSON:, message: %@", error.localizedDescription);
+        return nil;
+    }
+    return json;
+}
+
+
+//MARK: - 日期格式字符串格式化 Date fomartter
+
++ (NSString *_Nullable)stringFromDate:(NSDate *_Nonnull)date {
+    return [EFUtils stringFromDate:date dateTime:NO];
+}
+
++ (NSString *_Nullable)stringFromDate:(NSDate *_Nonnull)date dateTime:(BOOL)dateTime {
     NSString *dateFormat;
     if (dateTime) {
         dateFormat = @"yyyy-MM-dd HH:mm:ss";
-    }
-    else {
+    } else {
         dateFormat = @"yyyy-MM-dd";
     }
     return [EFUtils stringFromDate:date dateFormat:dateFormat];
 }
 
-+ (NSString *)stringFromDate:(NSDate *_Nonnull)date dateFormat:(NSString *_Nonnull)dateFormat {
++ (NSString *_Nullable)stringFromDate:(NSDate *_Nonnull)date dateFormat:(NSString *_Nonnull)dateFormat {
     NSDateFormatter *df = [[NSDateFormatter alloc] init];
-    [df setDateFormat:dateFormat];
-    NSLocale *locale = [[NSLocale alloc] initWithLocaleIdentifier:@"zh_CN"];
-    [df setLocale:locale];
+    df.dateFormat = dateFormat;
+    NSLocale *locale = [NSLocale currentLocale];
+    df.locale = locale;
     NSString *str = [df stringFromDate:date];
     return str;
 }
 
-+ (NSString *)stringFromDateString:(NSString *_Nonnull)dateString dateFormat:(NSString *_Nonnull)dateFormat {
-    NSDateFormatter *df = [[NSDateFormatter alloc] init];
-    [df setDateFormat:@"yyyy-MM-dd"];
-    NSDate *date = [df dateFromString:dateString];
++ (NSString *_Nullable)stringFromDateFormattedString:(NSString *_Nonnull)dateFormattedString dateFormat:(NSString *_Nonnull)dateFormat {
+    return [EFUtils stringFromDateFormattedString:dateFormattedString dateTime:NO dateFormat:dateFormat];
+}
+
++ (NSString *_Nullable)stringFromDateFormattedString:(NSString *_Nonnull)dateFormattedString dateTime:(BOOL)dateTime dateFormat:(NSString *_Nonnull)dateFormat {
+    NSDate *date = [EFUtils dateFromDateFormattedString:dateFormattedString dateTime:dateTime];
     return [EFUtils stringFromDate:date dateFormat:dateFormat];
 }
 
-+ (NSString *)stringFromDateTimeString:(NSString *_Nonnull)dateString dateTime:(BOOL)dateTime dateFormat:(NSString *_Nonnull)dateFormat {
++ (NSString *_Nullable)stringFromDateFormattedString:(NSString *_Nonnull)dateFormattedString dateFormatIn:(NSString *_Nonnull)dateFormatIn dateFormatOut:(NSString *_Nonnull)dateFormatOut {
+    NSDate *date = [EFUtils dateFromDateFormattedString:dateFormattedString dateFormatIn:dateFormatIn];
+    return [EFUtils stringFromDate:date dateFormat:dateFormatOut];
+}
+
++ (NSDate *_Nullable)dateFromDateFormattedString:(NSString *_Nonnull)dateFormattedString {
+    return [EFUtils dateFromDateFormattedString:dateFormattedString dateTime:NO];
+}
+
++ (NSDate *_Nullable)dateFromDateFormattedString:(NSString *_Nonnull)dateFormattedString dateTime:(BOOL)dateTime {
     NSString *sourceDateFormat;
     if (dateTime) {
         sourceDateFormat = @"yyyy-MM-dd HH:mm:ss";
-    }
-    else {
+    } else {
         sourceDateFormat = @"yyyy-MM-dd";
     }
     NSDateFormatter *df = [[NSDateFormatter alloc] init];
-    [df setDateFormat:sourceDateFormat];
-    NSDate *date = [df dateFromString:dateString];
-    return [EFUtils stringFromDate:date dateFormat:dateFormat];
+    df.dateFormat = sourceDateFormat;
+    return [df dateFromString:dateFormattedString];
+}
+
++ (NSDate *_Nullable)dateFromDateFormattedString:(NSString *_Nonnull)dateFormattedString dateFormatIn:(NSString *_Nonnull)dateFormatIn {
+    NSDateFormatter *df = [[NSDateFormatter alloc] init];
+    df.dateFormat = dateFormatIn;
+    return [df dateFromString:dateFormattedString];
 }
 
 
-//MARK: - DES加密
-#define LocalStr_None @"" // 排除空白字符
-static const char encodingTable[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-+ (NSString *)base64StringFromText:(NSString *_Nonnull)text
-{
-    if (text && ![text isEqualToString:LocalStr_None]) {
-        //取项目的bundleIdentifier作为KEY
-        NSString *key = @"BO8FCScZ";
-        NSData *data = [text dataUsingEncoding:NSUTF8StringEncoding];
-        //IOS 自带DES加密 Begin
-        data = [self DESEncrypt:data WithKey:key];
-        //IOS 自带DES加密 End
-        return [self base64EncodedStringFrom:data];
-    }
-    else {
-        return LocalStr_None;
-    }
+//MARK: - 编码为 base64字符串和解码为 NSData base64 encoding and decoding
+
++ (NSString *_Nullable)dataBase64EncodingWith:(NSData *_Nonnull)data {
+    return [data base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
 }
 
-+ (NSString *)textFromBase64String:(NSString *_Nonnull)base64
-{
-    if (base64 && ![base64 isEqualToString:LocalStr_None]) {
-        //取项目的bundleIdentifier作为KEY
-        NSString *key = @"BO8FCScZ";
-        NSData *data = [self dataWithBase64EncodedString:base64];
-        //IOS 自带DES解密 Begin
-        data = [self DESDecrypt:data WithKey:key];
-        //IOS 自带DES加密 End
-        return [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-    }
-    else {
-        return LocalStr_None;
-    }
++ (NSData *_Nullable)dataBase64DecodingFrom:(NSString *_Nonnull)base64EncodedString {
+    return [[NSData data] initWithBase64EncodedString:base64EncodedString options:NSDataBase64DecodingIgnoreUnknownCharacters];
 }
 
-/************************************************************
- 函数名称 : + (NSData *)DESEncrypt:(NSData *)data WithKey:(NSString *)key
- 函数描述 : 文本数据进行DES加密
- 输入参数 : (NSData *)data
- (NSString *)key
- 输出参数 : N/A
- 返回参数 : (NSData *)
- 备注信息 : 此函数不可用于过长文本
- **********************************************************/
-+ (NSData *)DESEncrypt:(NSData *_Nonnull)data WithKey:(NSString *_Nonnull)key
-{
-    char keyPtr[kCCKeySizeAES256+1];
-    bzero(keyPtr, sizeof(keyPtr));
-    
-    [key getCString:keyPtr maxLength:sizeof(keyPtr) encoding:NSUTF8StringEncoding];
-    
-    NSUInteger dataLength = [data length];
-    
-    size_t bufferSize = dataLength + kCCBlockSizeAES128;
-    void *buffer = malloc(bufferSize);
-    
-    size_t numBytesEncrypted = 0;
-    CCCryptorStatus cryptStatus = CCCrypt(kCCEncrypt, kCCAlgorithmDES,
-                                          kCCOptionPKCS7Padding | kCCOptionECBMode,
-                                          keyPtr, kCCBlockSizeDES,
-                                          NULL,
-                                          [data bytes], dataLength,
-                                          buffer, bufferSize,
-                                          &numBytesEncrypted);
-    if (cryptStatus == kCCSuccess) {
-        return [NSData dataWithBytesNoCopy:buffer length:numBytesEncrypted];
-    }
-    
-    free(buffer);
-    return nil;
+
+//MARK: - UIKit
+//MARK: UIColor
+
++ (UIColor *_Nullable)colorWithHexString:(NSString *_Nonnull)hexString {
+    return [EFUtils colorWithHexString:hexString alpha:1];
 }
 
-/************************************************************
- 函数名称 : + (NSData *)DESEncrypt:(NSData *)data WithKey:(NSString *)key
- 函数描述 : 文本数据进行DES解密
- 输入参数 : (NSData *)data
- (NSString *)key
- 输出参数 : N/A
- 返回参数 : (NSData *)
- 备注信息 : 此函数不可用于过长文本
- **********************************************************/
-+ (NSData *)DESDecrypt:(NSData *_Nonnull)data WithKey:(NSString *_Nonnull)key
-{
-    char keyPtr[kCCKeySizeAES256+1];
-    bzero(keyPtr, sizeof(keyPtr));
-    
-    [key getCString:keyPtr maxLength:sizeof(keyPtr) encoding:NSUTF8StringEncoding];
-    
-    NSUInteger dataLength = [data length];
-    
-    size_t bufferSize = dataLength + kCCBlockSizeAES128;
-    void *buffer = malloc(bufferSize);
-    
-    size_t numBytesDecrypted = 0;
-    CCCryptorStatus cryptStatus = CCCrypt(kCCDecrypt, kCCAlgorithmDES,
-                                          kCCOptionPKCS7Padding | kCCOptionECBMode,
-                                          keyPtr, kCCBlockSizeDES,
-                                          NULL,
-                                          [data bytes], dataLength,
-                                          buffer, bufferSize,
-                                          &numBytesDecrypted);
-    
-    if (cryptStatus == kCCSuccess) {
-        return [NSData dataWithBytesNoCopy:buffer length:numBytesDecrypted];
++ (UIColor *_Nullable)colorWithHexString:(NSString *_Nonnull)hexString alpha:(CGFloat)alpha {
+    //去除空白字符并全部转成大写
+    NSString *cString = [[hexString stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] uppercaseString];
+    //把开头截取
+    if ([cString hasPrefix:@"0X"]) {
+        cString = [cString substringFromIndex:2];
     }
-    
-    free(buffer);
-    return nil;
-}
-
-/************************************************************
- 函数名称 : + (NSData *)dataWithBase64EncodedString:(NSString *)string
- 函数描述 : base64格式字符串转换为文本数据
- 输入参数 : (NSString *)string
- 输出参数 : N/A
- 返回参数 : (NSData *)
- 备注信息 :
- **********************************************************/
-+ (NSData *)dataWithBase64EncodedString:(NSString *_Nonnull)string
-{
-    if (string == nil)
-        [NSException raise:NSInvalidArgumentException format:@"string must be non-null"];
-    if ([string length] == 0)
-        return [NSData data];
-    
-    static char *decodingTable = NULL;
-    if (decodingTable == NULL)
-    {
-        decodingTable = malloc(256);
-        if (decodingTable == NULL)
-            return nil;
-        memset(decodingTable, CHAR_MAX, 256);
-        NSUInteger i;
-        for (i = 0; i < 64; i++)
-            decodingTable[(short)encodingTable[i]] = i;
+    else if ([cString hasPrefix:@"#"]) {
+        cString = [cString substringFromIndex:1];
     }
-    
-    const char *characters = [string cStringUsingEncoding:NSASCIIStringEncoding];
-    if (characters == NULL)     //  Not an ASCII string!
+    //仅处理常见的6位和8位
+    if ([cString length]!=6 && [cString length]!=8) {
         return nil;
-    char *bytes = malloc((([string length] + 3) / 4) * 3);
-    if (bytes == NULL)
-        return nil;
-    NSUInteger length = 0;
-    
-    NSUInteger i = 0;
-    while (YES)
-    {
-        char buffer[4];
-        short bufferLength;
-        for (bufferLength = 0; bufferLength < 4; i++)
-        {
-            if (characters[i] == '\0')
-                break;
-            if (isspace(characters[i]) || characters[i] == '=')
-                continue;
-            buffer[bufferLength] = decodingTable[(short)characters[i]];
-            if (buffer[bufferLength++] == CHAR_MAX)      //  Illegal character!
-            {
-                free(bytes);
-                return nil;
-            }
+    }
+    //取出不透明度、红、绿、蓝
+    unsigned int a, r, g, b;
+    NSRange range;
+    range.length = 2;
+    if (cString.length == 8) {
+        //a
+        range.location = 0;
+        NSString *aString = [cString substringWithRange:range];
+        //r
+        range.location = 2;
+        NSString *rString = [cString substringWithRange:range];
+        //g
+        range.location = 4;
+        NSString *gString = [cString substringWithRange:range];
+        //b
+        range.location = 6;
+        NSString *bString = [cString substringWithRange:range];
+        
+        [[NSScanner scannerWithString:aString] scanHexInt:&a];
+        [[NSScanner scannerWithString:rString] scanHexInt:&r];
+        [[NSScanner scannerWithString:gString] scanHexInt:&g];
+        [[NSScanner scannerWithString:bString] scanHexInt:&b];
+        
+        return alpha<1 ? [UIColor colorWithRed:(r / 255.0f) green:(g / 255.0f) blue:(b / 255.0f) alpha:alpha] : [UIColor colorWithRed:(r / 255.0f) green:(g / 255.0f) blue:(b / 255.0f) alpha:(a / 255.0f)];
+    } else {
+        //r
+        range.location = 0;
+        NSString *rString = [cString substringWithRange:range];
+        //g
+        range.location = 2;
+        NSString *gString = [cString substringWithRange:range];
+        //b
+        range.location = 4;
+        NSString *bString = [cString substringWithRange:range];
+        
+        [[NSScanner scannerWithString:rString] scanHexInt:&r];
+        [[NSScanner scannerWithString:gString] scanHexInt:&g];
+        [[NSScanner scannerWithString:bString] scanHexInt:&b];
+        
+        return [UIColor colorWithRed:(r / 255.0f) green:(g / 255.0f) blue:(b / 255.0f) alpha:alpha];
+    }
+}
+
++ (NSString *_Nullable)hexStringWithColor:(UIColor *_Nonnull)color {
+    NSInteger count = CGColorGetNumberOfComponents(color.CGColor);
+    const CGFloat *components = CGColorGetComponents(color.CGColor);
+    if (count == 4) {
+        CGFloat r = components[0];
+        CGFloat g = components[1];
+        CGFloat b = components[2];
+        CGFloat a = components[3];
+        return [NSString stringWithFormat:@"#%02lX%02lX%02lX%02lX", lroundf(a * 255), lroundf(r * 255), lroundf(g * 255), lroundf(b * 255)];
+    } else {
+        CGFloat c = components[0];
+        CGFloat a = components[1];
+        if (1.0 == a) {
+            return [NSString stringWithFormat:@"#%02lX%02lX%02lX", lroundf(c * 255), lroundf(c * 255), lroundf(c * 255)];
         }
-        
-        if (bufferLength == 0)
-            break;
-        if (bufferLength == 1)      //  At least two characters are needed to produce one byte!
-        {
-            free(bytes);
-            return nil;
-        }
-        
-        //  Decode the characters in the buffer to bytes.
-        bytes[length++] = (buffer[0] << 2) | (buffer[1] >> 4);
-        if (bufferLength > 2)
-            bytes[length++] = (buffer[1] << 4) | (buffer[2] >> 2);
-        if (bufferLength > 3)
-            bytes[length++] = (buffer[2] << 6) | buffer[3];
+        return [NSString stringWithFormat:@"#%02lX%02lX%02lX%02lX", lroundf(c * 255), lroundf(c * 255), lroundf(c * 255), lroundf(a * 255)];
     }
-    
-    bytes = realloc(bytes, length);
-    return [NSData dataWithBytesNoCopy:bytes length:length];
 }
 
-/************************************************************
- 函数名称 : + (NSString *)base64EncodedStringFrom:(NSData *)data
- 函数描述 : 文本数据转换为base64格式字符串
- 输入参数 : (NSData *)data
- 输出参数 : N/A
- 返回参数 : (NSString *)
- 备注信息 :
- **********************************************************/
-+ (NSString *)base64EncodedStringFrom:(NSData *_Nonnull)data
-{
-    if ([data length] == 0)
-        return @"";
-    
-    char *characters = malloc((([data length] + 2) / 3) * 4);
-    if (characters == NULL)
-        return nil;
-    NSUInteger length = 0;
-    
-    NSUInteger i = 0;
-    while (i < [data length])
-    {
-        char buffer[3] = {0,0,0};
-        short bufferLength = 0;
-        while (bufferLength < 3 && i < [data length])
-            buffer[bufferLength++] = ((char *)[data bytes])[i++];
-        
-        //  Encode the bytes in the buffer to four characters, including padding "=" characters if necessary.
-        characters[length++] = encodingTable[(buffer[0] & 0xFC) >> 2];
-        characters[length++] = encodingTable[((buffer[0] & 0x03) << 4) | ((buffer[1] & 0xF0) >> 4)];
-        if (bufferLength > 1)
-            characters[length++] = encodingTable[((buffer[1] & 0x0F) << 2) | ((buffer[2] & 0xC0) >> 6)];
-        else characters[length++] = '=';
-        if (bufferLength > 2)
-            characters[length++] = encodingTable[buffer[2] & 0x3F];
-        else characters[length++] = '=';
+
+//MARK: -
+
++ (id _Nonnull)sharedControllerInstanceWithStoryName:(NSString *_Nonnull)storyboardName andStoryboardID:(NSString *_Nonnull)storyboardID {
+    UIStoryboard *storyboardHealthAssistant = [UIStoryboard storyboardWithName:storyboardName bundle:nil];
+    id baseViewController = [storyboardHealthAssistant instantiateViewControllerWithIdentifier:storyboardID];
+    return baseViewController;
+}
+
++ (void)removeAllSubviewsOf:(UIView *_Nonnull)parentView {
+    for (UIView *view in parentView.subviews) {
+        [view removeFromSuperview];
     }
+}
+
++ (UIImage *)generateQRCode:(NSString *)code width:(CGFloat)width height:(CGFloat)height {
+    NSData *data = [code dataUsingEncoding:NSISOLatin1StringEncoding allowLossyConversion:false];
     
-    return [[NSString alloc] initWithBytesNoCopy:characters length:length encoding:NSASCIIStringEncoding freeWhenDone:YES];
+    CIFilter *filter = [CIFilter filterWithName:@"CIQRCodeGenerator"];
+    [filter setValue:data forKey:@"inputMessage"];
+    [filter setValue:@"H" forKey:@"inputCorrectionLevel"];
+    
+    CIImage *qrcodeImage;
+    qrcodeImage = [filter outputImage];
+    
+    // 消除模糊
+    CGFloat scaleX = width / qrcodeImage.extent.size.width; // extent 返回图片的 frame
+    CGFloat scaleY = height / qrcodeImage.extent.size.height;
+    CIImage *transformedImage = [qrcodeImage imageByApplyingTransform:CGAffineTransformScale(CGAffineTransformIdentity, scaleX, scaleY)];
+    
+    return [UIImage imageWithCIImage:transformedImage];
+}
+
+
+//MARK: - Deprecated
+
++ (id _Nonnull)sharedStoryboardInstanceWithStoryName:(NSString *_Nonnull)storyboardName storyboardID:(NSString *_Nonnull)storyboardID {
+    return [EFUtils sharedControllerInstanceWithStoryName:@"Login" andStoryboardID:@"Login_NC"];
+}
+
++ (BOOL)objectIsNullOrEmpty:(id _Nonnull)object {
+    return [EFUtils objectIsNilOrNull:object];
+}
+
++ (BOOL)stringIsNullOrEmpty:(NSString *_Nonnull)string {
+    return [EFUtils stringIsNilOrNullOrEmpty:string];
+}
+
++ (BOOL)checkValue:(NSString *_Nonnull)stringValue byRegExp:(NSString *_Nonnull)regExp {
+    return [EFUtils validateString:stringValue byRegExp:regExp];
+}
+
++ (BOOL)objectIsNull:(NSDictionary *_Nonnull)dictionary withKey:(NSString *_Nonnull)key {
+    return [EFUtils objectValueIsNilOrNull:dictionary withKey:key];
+}
+
++ (BOOL)validDictionary:(NSDictionary *_Nonnull)dictionary {
+    return ![EFUtils validateDictionary:dictionary];
+}
+
++ (NSString *_Nullable)stringFromDateString:(NSString *_Nonnull)dateString dateFormat:(NSString *_Nonnull)dateFormat {
+    return [EFUtils stringFromDateFormattedString:dateString dateFormat:dateFormat];
+}
+
++ (NSString *_Nullable)stringFromDateTimeString:(NSString *_Nonnull)dateString dateTime:(BOOL)dateTime dateFormat:(NSString *_Nonnull)dateFormat {
+    return [EFUtils stringFromDateFormattedString:dateString dateTime:dateTime dateFormat:dateFormat];
+}
+
++ (UIColor *_Nonnull)colorWithRGB:(int)rgbValue {
+    return COLOR_HEXSTRING(STRING_FORMAT(@"#%02X", rgbValue));
+}
+
++ (UIColor *_Nonnull)colorWithRGB:(int)rgbValue alpha:(CGFloat)alphaValue {
+    return COLOR_HEXSTRING_ALPHA(STRING_FORMAT(@"#%02X", rgbValue), alphaValue);
 }
 
 @end

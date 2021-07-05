@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/8/1.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
@@ -38,6 +38,7 @@ typedef void(^_Nullable RequestResultBlock)(BOOL success, id _Nullable responseO
 
 @end
 
+
 #pragma mark - AFHTTPRequestProperties
 @interface AFHTTPRequestProperties : NSObject
 
@@ -51,6 +52,7 @@ typedef void(^_Nullable RequestResultBlock)(BOOL success, id _Nullable responseO
 
 @end
 
+
 #pragma mark - AFHTTPRetryView
 @interface AFHTTPRetryView : UIView
 
@@ -63,6 +65,7 @@ typedef void(^_Nullable RequestResultBlock)(BOOL success, id _Nullable responseO
 
 @end
 
+
 #pragma mark - AFHTTPTool
 @interface AFHTTPTool : NSObject
 
@@ -70,14 +73,12 @@ typedef void(^_Nullable RequestResultBlock)(BOOL success, id _Nullable responseO
  获取 manager实例
 
  @param requestType 请求类型
- @param authorized 是否经授权的
  @return AFHTTPSessionManager实例
  */
-+ (AFHTTPSessionManager *_Nonnull)managerForRequestType:(AFHTTPRequestType)requestType authorized:(BOOL)authorized;
-
++ (AFHTTPSessionManager *_Nonnull)managerForRequestType:(AFHTTPRequestType)requestType;
 
 /**
- 是否客户端级别错误(排除常见系统级别错误以外的错误)，常见系统级别错误包括但不限于”未连接互联网“、”请求访问超时“、”服务器访问失败“、”服务器未正确配置“、”接口不存在“、”服务器错误“、”token不正确“、”token超时“。
+ 是否客户端级别错误(排除常见系统级别错误以外的错误)，常见系统级别错误包括但不限于“未连接互联网”、“请求访问超时”、“服务器访问失败”、“服务器未正确配置”、“接口不存在”、“服务器错误”、“token不正确”、“token超时”。
  @param http_error AFHTTPError实例
  @return YES 客户端级别错误 NO 常见系统级别错误
  */

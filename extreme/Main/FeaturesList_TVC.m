@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2018/7/9.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "FeaturesList_TVC.h"
@@ -27,20 +27,13 @@
 - (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
     [super prepareForSegue:segue sender:sender];
     
-    if ([segue.identifier isEqualToString:@"web_segue"]) {
-        id destViewController = segue.destinationViewController;
-        if ([destViewController isKindOfClass:[NormalBaseWebViewController class]]) {
-            NormalBaseWebViewController *web_VC = destViewController;
-            web_VC.url = @"http://www.xfmwk.com/";
-            web_VC.needReloadByStep = NO;
-        }
-    }
-    else if ([segue.identifier isEqualToString:@"codescan_segue"]) {
+    //TODO: 扫一扫
+    if ([segue.identifier isEqualToString:@"codescan_segue"]) {
         id destViewController = ((EFBaseNavigationController *)segue.destinationViewController).topViewController;
-        if ([destViewController isKindOfClass:[CodeScanerTool class]]) {
+        if ([destViewController isMemberOfClass:[CodeScanerTool class]]) {
             CodeScanerTool *codeScaner_tool = destViewController;
-            codeScaner_tool.Callback = ^(NSString *_Nonnull result) {
-                [SVProgressHUD showInfoWithStatus:FORMAT_STRING(@"扫码成功，信息: %@", result)];
+            codeScaner_tool.callbackHandler = ^(NSString *_Nonnull result) {
+                [SVProgressHUD showInfoWithStatus:STRING_FORMAT(@"扫码成功，信息: %@", result)];
             };
         }
     }

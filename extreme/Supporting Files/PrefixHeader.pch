@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/8/1.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #ifndef PrefixHeader_pch
@@ -14,45 +14,60 @@
 
 //MARK: - extreme
 //MARK: Pods
-#import "PodHeaders.h"
+#import "../PodHeaders.h"
 
 //MARK: Basic
-#import "EFConfig.h"
-#import "EFMacros.h"
-#import "EFUtils.h"
+#import "../EFUtils.h"
 
 //MARK: Base
-#import "EFBaseNavigationController.h"
-#import "EFBaseTitleView.h"
-#import "EFBaseBarButtonItemCustomView.h"
-#import "NSTimer+EFBlockSupport.h"
+#import "../EFBase/EFBaseNavigationController.h"
+#import "../EFBase/EFBaseTitleView.h"
+#import "../EFBase/EFBaseBarButtonItemCustomView.h"
+#import "../EFBase/NSTimer+EFBlockSupport.h"
 
 //MARK: Model
-#import "BaseDataModel.h"
+#import "NSObjectExtention/NSObject+Class.h"
+#import "NSObjectExtention/NSObject+Coding.h"
+#import "../EFBase/BaseDataModel.h"
 
 //MARK: Base VC
-#import "EFBaseViewController.h"
-#import "EFBaseWebViewController.h"
-#import "EFBaseTableViewCell.h"
-#import "EFBaseTableViewController.h"
+#import "../EFBase/EFBaseViewController.h"
+#import "../EFBase/EFBaseTableViewController.h"
+#import "../EFBase/EFBaseTableViewCell.h"
+#import "../EFBase/EFBaseWebViewController.h"
+#import "../EFBase/EFBaseModalDialogViewController.h"
 
 
-//MARK: - App Tools
-#import "AppConfig.h"
-#import "AppMacros.h"
+//MARK: - App utils
 #import "AppUtils.h"
 
-//MARK: Tools
+
+//MARK: - Tools
 #import "AppRequestURLs.h"
 #import "AFHTTPTool/AppHTTPTool.h"
 #import "ImageUploadTool/ImageUploadTool.h"
 #import "LABiometryTool/LABiometryTool.h"
+#import "CodeScanerTool/CodeScanerTool.h"
+#import "EFFMDBTool/EFFMDBTool.h"
 
-//MARK: Web view tool
+//MARK: Web tool
 #import "WebTool/NormalBaseWebViewController.h"
 #import "WebTool/ActivityBaseWebViewController.h"
 
-//MARK: UIKit
+
+//MARK: - UIKit
+//MARK: Modal dialog
+#import "EFUIKit/EFModalDialog/ListSelector_VC.h"
+#import "EFUIKit/EFModalDialog/ListSelector_TVCell.h"
+#import "EFUIKit/EFModalDialog/DaySelector_VC.h"
+#import "EFUIKit/EFModalDialog/LevelSelector_VC.h"
+#import "EFUIKit/EFModalDialog/LevelModel.h"
+
 #import "EFUIKit/EFNavigationBar/EFNavigationBar.h"
+#import "EFUIKit/EFButton/EFButton.h"
+#import "EFUIKit/EFView/EFView.h"
+#import "EFUIKit/EFImageView/EFImageView.h"
+#import "EFUIKit/EFLabel/EFLabel.h"
+#import "EFUIKit/EFTextField/EFTextField.h"
 
 #endif /* PrefixHeader_pch */

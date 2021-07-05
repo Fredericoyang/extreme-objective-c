@@ -3,10 +3,10 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/8/1.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
-#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
 
 @interface NSTimer (EFBlockSupport)
 
@@ -16,7 +16,7 @@
  @param interval 循环周期
  @param block 执行块
  @param repeats 是否循环执行
- @return 返回 NSTimer 实体
+ @return 返回 NSTimer实例
  */
 + (NSTimer *)ef_scheduledTimerWithTimeInterval:(NSTimeInterval)interval block:(void(^)(void))block repeats:(BOOL)repeats;
 

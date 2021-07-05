@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2018/4/13.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "LABiometryTest_VC.h"
@@ -21,23 +21,19 @@
     
     la_tool = [LABiometryTool sharedLABiometryTool];
     la_tool.fallbackButtonTitle = @"输入密码";
-    LOG(@"BiometryDeviceAvailable: %d", la_tool.isLABiometryDeviceAvailable);
+    LOG_FORMAT(@"BiometryDeviceAvailable: %d", la_tool.isLABiometryDeviceAvailable);
 }
 
-- (void)didReceiveMemoryWarning {
-    [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
-}
 
 - (IBAction)tapToTry:(id)sender {
     _result_label.text = @"";
     [la_tool ownerAuthorizationWithDescription:@"开启指纹支付" resultBlock:^(BOOL success, id resultObject) {
         if (success) {
-            self.result_label.text = FORMAT_STRING(@"验证成功 %@，不会执行任何操作", [EFUtils stringFromDate:[NSDate date]]);
+            self.result_label.text = STRING_FORMAT(@"验证成功 %@，不会执行任何操作", [EFUtils stringFromDate:[NSDate date]]);
         }
         else {
             LABiometryError *la_error = resultObject;
-            self.result_label.text = FORMAT_STRING(@"[error %ld] %@", (long)la_error.errorCode, la_error.errorDescription);
+            self.result_label.text = STRING_FORMAT(@"[error %ld] %@", (long)la_error.errorCode, la_error.errorDescription);
         }
     }];
 }

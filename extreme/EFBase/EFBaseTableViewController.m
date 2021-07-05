@@ -3,26 +3,25 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/8/1.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "EFBaseTableViewController.h"
+#import "EFNavigationBar.h"
 #import "EFBaseViewController.h"
-#import "EFMacros.h"
 #import "EFUtils.h"
 #import "PodHeaders.h"
 #import <AVFoundation/AVFoundation.h>
-#import <Photos/Photos.h>
 
-@interface EFBaseTableViewController () <UINavigationControllerDelegate, UIImagePickerControllerDelegate, UIGestureRecognizerDelegate>
+@interface EFBaseTableViewController ()
 
 @end
 
 @implementation EFBaseTableViewController {
     id<UIGestureRecognizerDelegate> _systemBackDelegate;
     
+    UIBarButtonItem *_normalCancel_barButtonItem;
     UIBarButtonItem *_latestCustomBackButton;
-    UIBarButtonItem *_latestCustomCancelButton;
     
     UIView *_customTableFooterView;
     
@@ -38,28 +37,38 @@
     CGFloat _noDataTextWidth;
     NSUInteger _noDataTextLines;
     
-    CLLocationManager* _locationManager; // 使用位置信息预授权
+    CLLocationManager *_locationManager;
 }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    // 1.5最终版无缝过渡
+    if ([USER_DEFAULTS boolForKey:@"disable location"]) {
+        [USER_DEFAULTS setBool:YES forKey:@"Disable location"];
+        [USER_DEFAULTS removeObjectForKey:@"disable location"];
+    }
+    if ([USER_DEFAULTS boolForKey:@"disable camera"]) {
+        [USER_DEFAULTS setBool:YES forKey:@"Disable camera"];
+        [USER_DEFAULTS removeObjectForKey:@"disable camera"];
+    }
+    
+    // 弹出显示自动添加取消
     if (NAVIGATION_CONTROLLER && [NAVI_CTRL_ROOT_VC isEqual:self] && NAVIGATION_CONTROLLER.originalViewController && UIModalPresentationFullScreen==NAVIGATION_CONTROLLER.modalPresentationStyle) {
-        self.customCancel_barButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancel:)];
-    }
-    
-    self.refreshEnabled = NO;
-    self.MJRefreshEnabled = NO;
-    
-    if (@available(iOS 11.0, *)) {
-        if (!self.automaticallyAdjustsScrollViewInsets) {
-            self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+        _normalCancel_barButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancel:)];
+        if (self.navigationItem.leftBarButtonItems.count > 0) {
+            NSMutableArray *leftBarButtonItems = [NSMutableArray arrayWithArray:self.navigationItem.leftBarButtonItems];
+            [leftBarButtonItems insertObject:_normalCancel_barButtonItem atIndex:0];
+            [self.navigationItem setLeftBarButtonItems:leftBarButtonItems animated:YES];
         }
-    } else {
-        // Fallback on earlier versions
+        else {
+            [self.navigationItem setLeftBarButtonItems:@[_normalCancel_barButtonItem] animated:YES];
+        }
     }
-    if (self.tableView.tableFooterView) {
-        _customTableFooterView = self.tableView.tableFooterView;
+    
+    // 导航跳转显示自动添加返回
+    if (self.previousViewController) {
+        self.navigationItem.leftItemsSupplementBackButton = YES;
     }
 }
 
@@ -82,7 +91,7 @@
     }
     
     for (NSURLSessionDataTask *dataTask in self.dataTasks) { // 取消所有数据任务队列
-        if (![EFUtils objectIsNullOrEmpty:dataTask]) {
+        if (![EFUtils objectIsNilOrNull:dataTask]) {
             [dataTask cancel];
         }
     }
@@ -90,6 +99,8 @@
 
 - (void)dealloc {
     self.adjustTableViewEdgeInsetsToFitKeyboard = NO;
+    
+    [[PHPhotoLibrary sharedPhotoLibrary] unregisterChangeObserver:self];
 }
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
@@ -102,7 +113,8 @@
 }
 
 
-#pragma mark 状态栏与导航
+#pragma mark - 状态栏与导航
+
 - (void)setStatusBarHidden:(BOOL)isHidden {
     _statusBarHidden = isHidden;
     
@@ -117,7 +129,17 @@
 
 - (void)setNavigationBarStyle:(EFBarStyle)navigationBarStyle {
     _navigationBarStyle = navigationBarStyle;
+    
     NAVIGATION_CONTROLLER.navigationBarStyle = navigationBarStyle;
+    
+    if ([self.navigationBar isMemberOfClass:[EFNavigationBar class]]) {
+        if (EFBarStyleDefault == navigationBarStyle) {
+            self.navigationBar.dark = NO;
+        }
+        else {
+            self.navigationBar.dark = YES;
+        }
+    }
 }
 
 - (EFNavigationBar *)navigationBar {
@@ -129,8 +151,10 @@
 
 
 #pragma mark 自定义返回
+
 - (void)setUseCustomBack:(BOOL)useCustomBack {
     _useCustomBack = useCustomBack;
+    
     if (useCustomBack) {
         if (!_customBack_barButtonItem) {
             self.customBack_barButtonItem = [[UIBarButtonItem alloc] initWithImage:IMAGE(@"extreme.bundle/back") style:UIBarButtonItemStylePlain target:self action:@selector(back:)];
@@ -146,38 +170,37 @@
 
 - (void)setCustomBack_barButtonItem:(UIBarButtonItem *)customBack_barButtonItem {
     _customBack_barButtonItem = customBack_barButtonItem;
+    
     if (_customBack_barButtonItem) {
-        if (_useCustomBack) {
-            if (self.previousViewController) {
-                if (self.navigationItem.leftBarButtonItems.count > 0) {
-                    NSMutableArray *leftBarButtonItems = [NSMutableArray arrayWithArray:self.navigationItem.leftBarButtonItems];
-                    if (_latestCustomBackButton) {
-                        [leftBarButtonItems replaceObjectAtIndex:0 withObject:_customBack_barButtonItem];
-                    }
-                    else {
-                        [leftBarButtonItems insertObject:_customBack_barButtonItem atIndex:0];
-                    }
-                    self.navigationItem.leftBarButtonItems = leftBarButtonItems;
+        if (_useCustomBack && self.previousViewController) {
+            if (self.navigationItem.leftBarButtonItems.count > 0) {
+                NSMutableArray *leftBarButtonItems = [NSMutableArray arrayWithArray:self.navigationItem.leftBarButtonItems];
+                if (_latestCustomBackButton) {
+                    [leftBarButtonItems replaceObjectAtIndex:0 withObject:_customBack_barButtonItem];
                 }
                 else {
-                    self.navigationItem.leftBarButtonItems = @[_customBack_barButtonItem];
+                    [leftBarButtonItems insertObject:_customBack_barButtonItem atIndex:0];
                 }
-                _latestCustomBackButton = _customBack_barButtonItem;
+                [self.navigationItem setLeftBarButtonItems:leftBarButtonItems animated:YES];
             }
+            else {
+                [self.navigationItem setLeftBarButtonItems:@[_customBack_barButtonItem] animated:YES];
+            }
+            
+            self.navigationItem.leftItemsSupplementBackButton = NO;
+            _latestCustomBackButton = _customBack_barButtonItem;
         }
     }
     else {
         if (_useCustomBack) {
             _customBack_barButtonItem = [[UIBarButtonItem alloc] initWithImage:IMAGE(@"extreme.bundle/back") style:UIBarButtonItemStylePlain target:self action:@selector(back:)];
-            if (self.previousViewController) {
-                if (self.navigationItem.leftBarButtonItems.count > 1) {
-                    NSMutableArray *leftBarButtonItems = [NSMutableArray arrayWithArray:self.navigationItem.leftBarButtonItems];
-                    [leftBarButtonItems replaceObjectAtIndex:0 withObject:_customBack_barButtonItem];
-                    self.navigationItem.leftBarButtonItems = leftBarButtonItems;
-                }
-                else {
-                    self.navigationItem.leftBarButtonItems = @[_customBack_barButtonItem];
-                }
+            if (self.previousViewController && self.navigationItem.leftBarButtonItems.count>0) {
+                NSMutableArray *leftBarButtonItems = [NSMutableArray arrayWithArray:self.navigationItem.leftBarButtonItems];
+                [leftBarButtonItems replaceObjectAtIndex:0 withObject:_customBack_barButtonItem];
+                [self.navigationItem setLeftBarButtonItems:leftBarButtonItems animated:YES];
+                
+                self.navigationItem.leftItemsSupplementBackButton = NO;
+                _latestCustomBackButton = _customBack_barButtonItem;
             }
         }
         else {
@@ -186,22 +209,14 @@
                     if (self.navigationItem.leftBarButtonItems.count > 1) {
                         NSMutableArray *leftBarButtonItems = [NSMutableArray arrayWithArray:self.navigationItem.leftBarButtonItems];
                         [leftBarButtonItems removeObject:_latestCustomBackButton];
-                        self.navigationItem.leftBarButtonItems = leftBarButtonItems;
-                        self.navigationItem.leftItemsSupplementBackButton = YES;
+                        [self.navigationItem setLeftBarButtonItems:leftBarButtonItems animated:YES];
                     }
                     else {
-                        self.navigationItem.leftBarButtonItems = nil;
+                        [self.navigationItem setLeftBarButtonItems:nil animated:YES];
                     }
-                }
-            }
-            else {
-                if (self.previousViewController) {
-                    if (self.navigationItem.leftBarButtonItems.count > 0) {
-                        self.navigationItem.leftItemsSupplementBackButton = YES;
-                    }
-                    else {
-                        self.navigationItem.leftBarButtonItems = nil;
-                    }
+                    
+                    self.navigationItem.leftItemsSupplementBackButton = YES;
+                    _latestCustomBackButton = nil;
                 }
             }
         }
@@ -209,8 +224,12 @@
 }
 
 - (void)back:(id)sender {
-    if (self.tapCustomBack) {
+    if (self.customBackHandler) {
+        self.customBackHandler(sender);
+    }
+    else if (self.tapCustomBack) {
         self.tapCustomBack(sender);
+        NSLog(@"[WARNING]tapCustomBack is deprecated, use customBackHandler instead.");
     }
     else {
         [NAVIGATION_CONTROLLER popViewControllerAnimated:YES];
@@ -218,57 +237,37 @@
 }
 
 #pragma mark 自定义取消
+
 - (void)setCustomCancel_barButtonItem:(UIBarButtonItem *)customCancel_barButtonItem {
     _customCancel_barButtonItem = customCancel_barButtonItem;
+    
     if (_customCancel_barButtonItem) {
-        if (!_latestCustomCancelButton) {
-            if (NAVIGATION_CONTROLLER && [NAVI_CTRL_ROOT_VC isEqual:self] && NAVIGATION_CONTROLLER.originalViewController && UIModalPresentationFullScreen==NAVIGATION_CONTROLLER.modalPresentationStyle) {
-                if (self.navigationItem.leftBarButtonItems.count > 0) {
-                    NSMutableArray *leftBarButtonItems = [NSMutableArray arrayWithArray:self.navigationItem.leftBarButtonItems];
-                    [leftBarButtonItems insertObject:_customCancel_barButtonItem atIndex:0];
-                    self.navigationItem.leftBarButtonItems = leftBarButtonItems;
-                }
-                else {
-                    self.navigationItem.leftBarButtonItems = @[_customCancel_barButtonItem];
-                }
-                _latestCustomCancelButton = _customCancel_barButtonItem;
-            }
-        }
-        else {
-            if (NAVIGATION_CONTROLLER && [NAVI_CTRL_ROOT_VC isEqual:self] && NAVIGATION_CONTROLLER.originalViewController && UIModalPresentationFullScreen==NAVIGATION_CONTROLLER.modalPresentationStyle) {
-                if (self.navigationItem.leftBarButtonItems.count > 1) {
-                    NSMutableArray *leftBarButtonItems = [NSMutableArray arrayWithArray:self.navigationItem.leftBarButtonItems];
-                    [leftBarButtonItems replaceObjectAtIndex:0 withObject:_customCancel_barButtonItem];
-                    self.navigationItem.leftBarButtonItems = leftBarButtonItems;
-                }
-                else {
-                    self.navigationItem.leftBarButtonItems = @[_customCancel_barButtonItem];
-                }
-                _latestCustomCancelButton = _customCancel_barButtonItem;
+        if (NAVIGATION_CONTROLLER && [NAVI_CTRL_ROOT_VC isEqual:self] && NAVIGATION_CONTROLLER.originalViewController && UIModalPresentationFullScreen==NAVIGATION_CONTROLLER.modalPresentationStyle) {
+            if (self.navigationItem.leftBarButtonItems.count > 0) {
+                NSMutableArray *leftBarButtonItems = [NSMutableArray arrayWithArray:self.navigationItem.leftBarButtonItems];
+                [leftBarButtonItems replaceObjectAtIndex:0 withObject:_customCancel_barButtonItem];
+                [self.navigationItem setLeftBarButtonItems:leftBarButtonItems animated:YES];
             }
         }
     }
     else {
-        if (_latestCustomCancelButton) {
-            if (NAVIGATION_CONTROLLER && [NAVI_CTRL_ROOT_VC isEqual:self] && NAVIGATION_CONTROLLER.originalViewController && UIModalPresentationFullScreen==NAVIGATION_CONTROLLER.modalPresentationStyle) {
-                _customCancel_barButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(cancel:)];
-                if (self.navigationItem.leftBarButtonItems.count > 1) {
-                    NSMutableArray *leftBarButtonItems = [NSMutableArray arrayWithArray:self.navigationItem.leftBarButtonItems];
-                    [leftBarButtonItems replaceObjectAtIndex:0 withObject:_customCancel_barButtonItem];
-                    self.navigationItem.leftBarButtonItems = leftBarButtonItems;
-                }
-                else {
-                    self.navigationItem.leftBarButtonItems = @[_customCancel_barButtonItem];
-                }
-                _latestCustomCancelButton = _customCancel_barButtonItem;
+        if (NAVIGATION_CONTROLLER && [NAVI_CTRL_ROOT_VC isEqual:self] && NAVIGATION_CONTROLLER.originalViewController && UIModalPresentationFullScreen==NAVIGATION_CONTROLLER.modalPresentationStyle) {
+            if (self.navigationItem.leftBarButtonItems.count > 0) {
+                NSMutableArray *leftBarButtonItems = [NSMutableArray arrayWithArray:self.navigationItem.leftBarButtonItems];
+                [leftBarButtonItems replaceObjectAtIndex:0 withObject:_normalCancel_barButtonItem];
+                [self.navigationItem setLeftBarButtonItems:leftBarButtonItems animated:YES];
             }
         }
     }
 }
 
 - (void)cancel:(id)sender {
-    if (self.tapCustomCancel) {
+    if (self.customCancelHandler) {
+        self.customCancelHandler(sender);
+    }
+    else if (self.tapCustomCancel) {
         self.tapCustomCancel(sender);
+        NSLog(@"[WARNING]tapCustomCancel is deprecated, use customCancelHandler instead.");
     }
     else {
         [self dismissViewControllerAnimated:YES completion:nil];
@@ -276,33 +275,17 @@
 }
 
 
-#pragma mark - 调整Table view的边距以适应键盘
-- (void)setFocusedContentOffset:(CGPoint)focusedContentOffset {
-    _focusedContentOffset = focusedContentOffset;
-}
-
-- (void)setAdjustTableViewEdgeInsetsToFitKeyboard:(BOOL)isAdjust {
-    _adjustTableViewEdgeInsetsToFitKeyboard = isAdjust;
-    if (isAdjust) {
-        [NOTIFICATION_CENTER addObserver:self
-                                selector:@selector(keyboardWillShow:)
-                                    name:UIKeyboardWillShowNotification
-                                  object:nil];
-        [NOTIFICATION_CENTER addObserver:self
-                                selector:@selector(keyboardWillHide:)
-                                    name:UIKeyboardWillHideNotification
-                                  object:nil];
-    }
-    else {
-        [self removeNotification];
-    }
-}
-
-
 #pragma mark - 发起定位请求
+
 - (void)requestLocationAuthorization:(BOOL)whenInUse {
     _locationManager = [[CLLocationManager alloc] init];
-    if ([CLLocationManager locationServicesEnabled] && kCLAuthorizationStatusNotDetermined==[CLLocationManager authorizationStatus]) {
+    CLAuthorizationStatus locationAuthorizationStatus;
+    if (@available(iOS 14, *)) {
+        locationAuthorizationStatus = [_locationManager authorizationStatus];
+    } else {
+        locationAuthorizationStatus = [CLLocationManager authorizationStatus];
+    }
+    if ([CLLocationManager locationServicesEnabled] && kCLAuthorizationStatusNotDetermined==locationAuthorizationStatus) {
         if (whenInUse) {
             [_locationManager requestWhenInUseAuthorization];
         }
@@ -312,64 +295,99 @@
     }
 }
 
-- (void)requestLocationSuccess:(successHandler)successHandler failure:(failureHandler)failureHandler {
-    CLLocationManager* locationManager = [[CLLocationManager alloc] init];
+- (void)requestLocationTemporaryFullAccuracyAuthorizationWithPurposeKey:(NSString *_Nonnull)purposeKey authorizedHandler:(AuthorizedHandler)authorizedHandler deniedHandler:(DeniedHandler)deniedHandler {
+    if (!_locationManager) {
+        LOG_FORMAT(@"Use -requestLocationAuthorization: on the -viewDidLoad: first.");
+        return;
+    }
+    if (CLAccuracyAuthorizationReducedAccuracy == _locationManager.accuracyAuthorization) {
+        [_locationManager requestTemporaryFullAccuracyAuthorizationWithPurposeKey:purposeKey completion:^(NSError *_Nullable error) {
+            if (!error) {
+                if (CLAccuracyAuthorizationFullAccuracy == self->_locationManager.accuracyAuthorization) {
+                    if (authorizedHandler) {
+                        authorizedHandler();
+                    }
+                } else {
+                    if (deniedHandler) {
+                        deniedHandler();
+                    }
+                }
+            }
+        }];
+    } else {
+        if (authorizedHandler) {
+            authorizedHandler();
+        }
+    }
+}
+
+- (void)requestLocationSuccessHandler:(LocationSuccessHandler)locationSuccessHandler failureHandler:(LocationFailureHandler)locationFailureHandler {
+    _locationManager = _locationManager?:[[CLLocationManager alloc] init];
+    CLAuthorizationStatus locationAuthorizationStatus;
+    if (@available(iOS 14, *)) {
+        locationAuthorizationStatus = [_locationManager authorizationStatus];
+    } else {
+        locationAuthorizationStatus = [CLLocationManager authorizationStatus];
+    }
     if ([CLLocationManager locationServicesEnabled]) {
-        switch ([CLLocationManager authorizationStatus]) {
+        switch (locationAuthorizationStatus) {
+            case kCLAuthorizationStatusNotDetermined:
+            {
+                while (kCLAuthorizationStatusNotDetermined == locationAuthorizationStatus) {
+                    [_locationManager requestWhenInUseAuthorization];
+                    if (@available(iOS 14, *)) {
+                        locationAuthorizationStatus = [_locationManager authorizationStatus];
+                    } else {
+                        locationAuthorizationStatus = [CLLocationManager authorizationStatus];
+                    }
+                }
+                [self requestLocationSuccessHandler:locationSuccessHandler failureHandler:locationFailureHandler];
+            }
+                break;
             case kCLAuthorizationStatusRestricted:
             {
                 [SVProgressHUD showErrorWithStatus:@"请先到设置中关闭定位的访问限制"];
-                if (failureHandler) {
-                    failureHandler(locationManager, kCLAuthorizationStatusRestricted);
+                if (locationFailureHandler) {
+                    locationFailureHandler(_locationManager, kCLAuthorizationStatusRestricted);
                 }
             }
                 break;
             case kCLAuthorizationStatusDenied:
             {
-                if (![USER_DEFAULTS boolForKey:@"disable location"]) {
+                if (![USER_DEFAULTS boolForKey:@"Disable location"]) {
                     NSString *title = @"没有开启定位权限，是否打开设置去开启？";
                     NSString *message = @"也可以稍后从设置中开启定位权限。";
                     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
                     UIAlertAction *cancle = [UIAlertAction actionWithTitle:@"不再提示" style:UIAlertActionStyleCancel handler:^(UIAlertAction *_Nonnull action) {
-                        [USER_DEFAULTS setBool:YES forKey:@"disable location"];
+                        [USER_DEFAULTS setBool:YES forKey:@"Disable location"];
                         [USER_DEFAULTS synchronize];
                         [alert dismissViewControllerAnimated:YES completion:nil];
                         
                         [SVProgressHUD showErrorWithStatus:@"请先到设置中开启定位权限"];
-                        if (failureHandler) {
-                            failureHandler(locationManager, kCLAuthorizationStatusDenied);
+                        if (locationFailureHandler) {
+                            locationFailureHandler(self->_locationManager, kCLAuthorizationStatusDenied);
                         }
                     }];
                     UIAlertAction *ok = [UIAlertAction actionWithTitle:@"打开设置" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_Nonnull action) {
-                        if (@available(iOS 10.0, *)) {
-                            [APPLICATION openURL:
-                             [NSURL URLWithString:UIApplicationOpenSettingsURLString] options:@{} completionHandler:nil];
-                        } else {
-                            [APPLICATION openURL:
-                             [NSURL URLWithString:UIApplicationOpenSettingsURLString]];
-                        }
+                        [APPLICATION openURL:
+                         [NSURL URLWithString:UIApplicationOpenSettingsURLString] options:@{} completionHandler:nil];
                     }];
                     [alert addAction:cancle];
                     [alert addAction:ok];
-                    if (self.containerViewController) {
-                        [self.containerViewController presentViewController:alert animated:YES completion:nil];
-                    }
-                    else {
-                        [self presentViewController:alert animated:YES completion:nil];
-                    }
+                    [self presentViewController:alert animated:YES completion:nil];
                 }
                 else {
                     [SVProgressHUD showErrorWithStatus:@"请先到设置中开启定位权限"];
-                    if (failureHandler) {
-                        failureHandler(locationManager, kCLAuthorizationStatusDenied);
+                    if (locationFailureHandler) {
+                        locationFailureHandler(_locationManager, kCLAuthorizationStatusDenied);
                     }
                 }
             }
                 break;
             default:
             {
-                if (successHandler) {
-                    successHandler(locationManager);
+                if (locationSuccessHandler) {
+                    locationSuccessHandler(_locationManager);
                 }
             }
                 break;
@@ -377,15 +395,22 @@
     }
     else {
         [SVProgressHUD showErrorWithStatus:@"请先到设置中开启定位权限"];
-        if (failureHandler) {
-            failureHandler(locationManager, kCLAuthorizationStatusDenied);
+        if (locationFailureHandler) {
+            locationFailureHandler(_locationManager, kCLAuthorizationStatusDenied);
         }
     }
 }
 
+//MARK: Deprecated
+
+- (void)requestLocationSuccess:(successHandler)successHandler failure:(failureHandler)failureHandler {
+    [self requestLocationSuccessHandler:successHandler failureHandler:failureHandler];
+}
+
 
 #pragma mark - 显示照片选择器
-- (void)privacyCameraAuthorizationWithCompletion:(completion)completion {
+
+- (void)privacyCameraAuthorizationWithCompletionHandler:(CompletionHandler)completionHandler {
     // 判断相机是否获取授权
     AVAuthorizationStatus status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeVideo];
     switch (status) {
@@ -395,8 +420,8 @@
             [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo completionHandler:^(BOOL granted) {
                 dispatch_async(dispatch_get_main_queue(), ^{
                     if (granted) {
-                        if (completion) {
-                            completion();
+                        if (completionHandler) {
+                            completionHandler();
                         }
                     }
                     else {
@@ -413,23 +438,18 @@
             break;
         case AVAuthorizationStatusDenied:
         {
-            if (![USER_DEFAULTS boolForKey:@"disable camera"]) {
+            if (![USER_DEFAULTS boolForKey:@"Disable camera"]) {
                 NSString *title = @"没有开启相机权限，是否打开设置去开启？";
                 NSString *message = @"也可以稍后从设置中开启相机权限。";
                 UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
                 UIAlertAction *cancle = [UIAlertAction actionWithTitle:@"不再提示" style:UIAlertActionStyleCancel handler:^(UIAlertAction *_Nonnull action) {
-                    [USER_DEFAULTS setBool:YES forKey:@"disable camera"];
+                    [USER_DEFAULTS setBool:YES forKey:@"Disable camera"];
                     [USER_DEFAULTS synchronize];
                     [alert dismissViewControllerAnimated:YES completion:nil];
                 }];
                 UIAlertAction *ok = [UIAlertAction actionWithTitle:@"打开设置" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_Nonnull action) {
-                    if (@available(iOS 10.0, *)) {
-                        [APPLICATION openURL:
-                         [NSURL URLWithString:UIApplicationOpenSettingsURLString] options:@{} completionHandler:nil];
-                    } else {
-                        [APPLICATION openURL:
-                         [NSURL URLWithString:UIApplicationOpenSettingsURLString]];
-                    }
+                    [APPLICATION openURL:
+                     [NSURL URLWithString:UIApplicationOpenSettingsURLString] options:@{} completionHandler:nil];
                 }];
                 [alert addAction:cancle];
                 [alert addAction:ok];
@@ -442,8 +462,8 @@
             break;
         case AVAuthorizationStatusAuthorized:
         {
-            if (completion) {
-                completion();
+            if (completionHandler) {
+                completionHandler();
             }
         }
             break;
@@ -452,7 +472,7 @@
     }
 }
 
-- (void)privacyPhotoLibraryAuthorizationWithCompletion:(completion)completion {
+- (void)privacyPhotoLibraryAuthorizationWithCompletionHandler:(CompletionHandler)completionHandler {
     // 判断照片是否获取授权
     PHAuthorizationStatus photoAuthorStatus = [PHPhotoLibrary authorizationStatus];
     switch (photoAuthorStatus) {
@@ -460,16 +480,14 @@
         {
             // 许可对话框没有出现，发起授权许可
             [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    if (status == PHAuthorizationStatusAuthorized) {
-                        if (completion) {
-                            completion();
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        if (status == PHAuthorizationStatusAuthorized) {
+                        [self privacyPhotoLibraryAuthorizationWithCompletionHandler:completionHandler];
+                        } else {
+                            [SVProgressHUD showErrorWithStatus:@"请先到设置中开启照片权限"];
                         }
-                    } else {
-                        [SVProgressHUD showErrorWithStatus:@"请先到设置中开启照片权限"];
-                    }
-                });
-            }];
+                    });
+                }];
         }
             break;
         case PHAuthorizationStatusRestricted:
@@ -479,23 +497,18 @@
             break;
         case PHAuthorizationStatusDenied:
         {
-            if (![USER_DEFAULTS boolForKey:@"disable camera"]) {
+            if (![USER_DEFAULTS boolForKey:@"Disable photo library"]) {
                 NSString *title = @"没有开启照片权限，是否打开设置去开启？";
                 NSString *message = @"也可以稍后从设置中开启照片权限。";
                 UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
                 UIAlertAction *cancle = [UIAlertAction actionWithTitle:@"不再提示" style:UIAlertActionStyleCancel handler:^(UIAlertAction *_Nonnull action) {
-                    [USER_DEFAULTS setBool:YES forKey:@"disable camera"];
+                    [USER_DEFAULTS setBool:YES forKey:@"Disable photo library"];
                     [USER_DEFAULTS synchronize];
                     [alert dismissViewControllerAnimated:YES completion:nil];
                 }];
                 UIAlertAction *ok = [UIAlertAction actionWithTitle:@"打开设置" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_Nonnull action) {
-                    if (@available(iOS 10.0, *)) {
-                        [APPLICATION openURL:
+                    [APPLICATION openURL:
                          [NSURL URLWithString:UIApplicationOpenSettingsURLString] options:@{} completionHandler:nil];
-                    } else {
-                        [APPLICATION openURL:
-                         [NSURL URLWithString:UIApplicationOpenSettingsURLString]];
-                    }
                 }];
                 [alert addAction:cancle];
                 [alert addAction:ok];
@@ -508,8 +521,8 @@
             break;
         case PHAuthorizationStatusAuthorized:
         {
-            if (completion) {
-                completion();
+            if (completionHandler) {
+                completionHandler();
             }
         }
             break;
@@ -518,71 +531,239 @@
     }
 }
 
-- (void)showImagePicker:(UIImagePickerControllerSourceType)sourceType isFront:(BOOL)isFront {
+- (void)privacyPhotoLibraryAuthorizationWithLimitedPhotosHandler:(LimitedPhotosHandler)limitedPhotosHandler authorizedHandler:(AuthorizedHandler)authorizedHandler {
+    // 判断照片是否获取授权
+    PHAuthorizationStatus photoAuthorStatus = [PHPhotoLibrary authorizationStatusForAccessLevel:PHAccessLevelReadWrite];
+    switch (photoAuthorStatus) {
+        case PHAuthorizationStatusNotDetermined:
+        {
+            // 许可对话框没有出现，发起授权许可
+            [PHPhotoLibrary requestAuthorizationForAccessLevel:PHAccessLevelReadWrite handler:^(PHAuthorizationStatus status) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                    if (status==PHAuthorizationStatusAuthorized || status==PHAuthorizationStatusLimited) {
+                        [self privacyPhotoLibraryAuthorizationWithLimitedPhotosHandler:limitedPhotosHandler authorizedHandler:authorizedHandler];
+                        } else {
+                            [SVProgressHUD showErrorWithStatus:@"请先到设置中开启照片权限"];
+                        }
+                    });
+                }];
+            }
+            break;
+        case PHAuthorizationStatusRestricted:
+        {
+            [SVProgressHUD showErrorWithStatus:@"请先到设置中关闭照片的访问限制"];
+        }
+            break;
+        case PHAuthorizationStatusDenied:
+        {
+            if (![USER_DEFAULTS boolForKey:@"Disable photo library"]) {
+                NSString *title = @"没有开启照片权限，是否打开设置去开启？";
+                NSString *message = @"也可以稍后从设置中开启照片权限。";
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
+                UIAlertAction *cancle = [UIAlertAction actionWithTitle:@"不再提示" style:UIAlertActionStyleCancel handler:^(UIAlertAction *_Nonnull action) {
+                    [USER_DEFAULTS setBool:YES forKey:@"Disable photo library"];
+                    [USER_DEFAULTS synchronize];
+                    [alert dismissViewControllerAnimated:YES completion:nil];
+                }];
+                UIAlertAction *ok = [UIAlertAction actionWithTitle:@"打开设置" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_Nonnull action) {
+                    [APPLICATION openURL:
+                     [NSURL URLWithString:UIApplicationOpenSettingsURLString] options:@{} completionHandler:nil];
+                }];
+                [alert addAction:cancle];
+                [alert addAction:ok];
+                [self presentViewController:alert animated:YES completion:nil];
+            }
+            else {
+                [SVProgressHUD showErrorWithStatus:@"请先到设置中开启照片权限"];
+            }
+        }
+            break;
+        case PHAuthorizationStatusAuthorized:
+        {
+            if (authorizedHandler) {
+                authorizedHandler();
+            }
+        }
+            break;
+        case PHAuthorizationStatusLimited:
+        {
+            [[PHPhotoLibrary sharedPhotoLibrary] registerChangeObserver:self];
+            
+            if (limitedPhotosHandler) {
+                limitedPhotosHandler();
+            }
+        }
+            break;
+        default:
+            break;
+    }
+}
+
+- (void)showImagePicker:(UIImagePickerControllerSourceType)sourceType {
+    [self showImagePicker:sourceType isCameraDeviceFront:NO];
+}
+
+- (void)showImagePicker:(UIImagePickerControllerSourceType)sourceType isCameraDeviceFront:(BOOL)isCameraDeviceFront {
     UIImagePickerController *imagePicker = [[UIImagePickerController alloc] init];
     imagePicker.delegate = self;
     imagePicker.sourceType = sourceType;
     imagePicker.mediaTypes = [NSArray arrayWithObjects:@"public.image", nil];
     if (UIImagePickerControllerSourceTypeCamera == sourceType) {
-        imagePicker.cameraDevice = isFront?UIImagePickerControllerCameraDeviceFront:UIImagePickerControllerCameraDeviceRear;
-    }
-    if (self.containerViewController) {
-        [self.containerViewController presentViewController:imagePicker animated:YES completion:nil];
+        imagePicker.cameraDevice = isCameraDeviceFront ? UIImagePickerControllerCameraDeviceFront : UIImagePickerControllerCameraDeviceRear;
+        imagePicker.cameraCaptureMode = UIImagePickerControllerCameraCaptureModePhoto;
     }
     else {
-        [self presentViewController:imagePicker animated:YES completion:nil];
+        imagePicker.mediaTypes = [NSArray arrayWithObjects:@"public.image", nil];
     }
+    imagePicker.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self presentViewController:imagePicker animated:YES completion:nil];
 }
 
-- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message sourceView:(UIView *_Nonnull)sourceView completion:(completion)completion {
-    [self showPhotoPickerWithMessage:message isFront:NO sourceView:sourceView completion:completion];
+- (void)presentLimitedLibraryPicker {
+    [[PHPhotoLibrary sharedPhotoLibrary] presentLimitedLibraryPickerFromViewController:self];
 }
 
-- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message isFront:(BOOL)isFront sourceView:(UIView *_Nonnull)sourceView completion:(completion)completion {
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:NO photoSelectionLimit:1 sourceView:nil completionHandler:nil];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message isCameraDeviceFront:(BOOL)isCameraDeviceFront {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:isCameraDeviceFront photoSelectionLimit:1 sourceView:nil completionHandler:nil];
+}
+
+- (void)showPhotoPickerNoPhotoSelectionLimitWithMessage:(NSString *_Nullable)message {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:NO photoSelectionLimit:0 sourceView:nil completionHandler:nil];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message photoSelectionLimit:(NSUInteger)photoSelectionLimit {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:NO photoSelectionLimit:photoSelectionLimit sourceView:nil completionHandler:nil];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message sourceView:(UIView *_Nullable)sourceView {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:NO photoSelectionLimit:1 sourceView:sourceView completionHandler:nil];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message isCameraDeviceFront:(BOOL)isCameraDeviceFront sourceView:(UIView *_Nullable)sourceView {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:isCameraDeviceFront photoSelectionLimit:1 sourceView:sourceView completionHandler:nil];
+}
+
+- (void)showPhotoPickerNoPhotoSelectionLimitWithMessage:(NSString *_Nullable)message sourceView:(UIView *_Nullable)sourceView {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:NO photoSelectionLimit:0 sourceView:sourceView completionHandler:nil];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message photoSelectionLimit:(NSUInteger)photoSelectionLimit sourceView:(UIView *_Nullable)sourceView {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:NO photoSelectionLimit:photoSelectionLimit sourceView:sourceView completionHandler:nil];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message completionHandler:(CompletionHandler)completionHandler {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:NO photoSelectionLimit:1 sourceView:nil completionHandler:completionHandler];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message isCameraDeviceFront:(BOOL)isCameraDeviceFront completionHandler:(CompletionHandler)completionHandler {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:isCameraDeviceFront photoSelectionLimit:1 sourceView:nil completionHandler:completionHandler];
+}
+
+- (void)showPhotoPickerNoPhotoSelectionLimitWithMessage:(NSString *_Nullable)message completionHandler:(CompletionHandler)completionHandler {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:NO photoSelectionLimit:0 sourceView:nil completionHandler:completionHandler];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message photoSelectionLimit:(NSUInteger)photoSelectionLimit completionHandler:(CompletionHandler)completionHandler {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:NO photoSelectionLimit:photoSelectionLimit sourceView:nil completionHandler:completionHandler];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message sourceView:(UIView *_Nullable)sourceView completionHandler:(CompletionHandler)completionHandler {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:NO photoSelectionLimit:1 sourceView:sourceView completionHandler:completionHandler];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message isCameraDeviceFront:(BOOL)isCameraDeviceFront sourceView:(UIView *_Nullable)sourceView completionHandler:(CompletionHandler)completionHandler {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:isCameraDeviceFront photoSelectionLimit:1 sourceView:sourceView completionHandler:completionHandler];
+}
+
+- (void)showPhotoPickerNoPhotoSelectionLimitWithMessage:(NSString *_Nullable)message sourceView:(UIView *_Nullable)sourceView completionHandler:(CompletionHandler)completionHandler {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:NO photoSelectionLimit:0 sourceView:sourceView completionHandler:completionHandler];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message photoSelectionLimit:(NSUInteger)photoSelectionLimit sourceView:(UIView *_Nullable)sourceView completionHandler:(CompletionHandler)completionHandler {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:NO photoSelectionLimit:photoSelectionLimit sourceView:sourceView completionHandler:completionHandler];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message isCameraDeviceFront:(BOOL)isCameraDeviceFront photoSelectionLimit:(NSUInteger)photoSelectionLimit sourceView:(UIView *_Nullable)sourceView completionHandler:(CompletionHandler)completionHandler {
     UIAlertController *alertSheet = [UIAlertController alertControllerWithTitle:@"" message:message preferredStyle:UIAlertControllerStyleActionSheet];
     UIAlertAction *camera = [UIAlertAction actionWithTitle:@"拍照" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_Nonnull action) {
-        if (completion) {
-            completion();
+        if (completionHandler) {
+            completionHandler();
         }
-        [self privacyCameraAuthorizationWithCompletion:^{
-            [self showImagePicker:UIImagePickerControllerSourceTypeCamera isFront:isFront];
+        
+        [self privacyCameraAuthorizationWithCompletionHandler:^{
+            [self showImagePicker:UIImagePickerControllerSourceTypeCamera isCameraDeviceFront:isCameraDeviceFront];
         }];
     }];
-    UIAlertAction *photo_library = [UIAlertAction actionWithTitle:@"选取照片" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_Nonnull action) {
-        if (completion) {
-            completion();
+    UIAlertAction *photoLibrary = [UIAlertAction actionWithTitle:@"选取照片" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_Nonnull action) {
+        if (completionHandler) {
+            completionHandler();
         }
-        [self privacyPhotoLibraryAuthorizationWithCompletion:^{
-            [self showImagePicker:UIImagePickerControllerSourceTypePhotoLibrary isFront:isFront];
-        }];
+        
+        if (@available(iOS 14, *)) {
+            PHPickerConfiguration *configuration = [[PHPickerConfiguration alloc] init];
+            configuration.filter = [PHPickerFilter imagesFilter];
+            configuration.selectionLimit = photoSelectionLimit;
+            PHPickerViewController *pickerViewController = [[PHPickerViewController alloc] initWithConfiguration:configuration];
+            pickerViewController.delegate = self;
+            pickerViewController.modalPresentationStyle = UIModalPresentationFullScreen;
+            [self presentViewController:pickerViewController animated:YES completion:nil];
+        } else {
+            [self privacyPhotoLibraryAuthorizationWithCompletionHandler:^{
+                [self showImagePicker:UIImagePickerControllerSourceTypePhotoLibrary];
+            }];
+        }
     }];
     UIAlertAction *cancelAction=[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction *_Nonnull action) {
-        if (completion) {
-            completion();
+        if (completionHandler) {
+            completionHandler();
         }
     }];
     [alertSheet addAction:camera];
-    [alertSheet addAction:photo_library];
+    [alertSheet addAction:photoLibrary];
     [alertSheet addAction:cancelAction];
     
     UIPopoverPresentationController *popover = alertSheet.popoverPresentationController;
     if (popover) {
-        popover.sourceView = sourceView;
-        popover.sourceRect = sourceView.bounds;
+        popover.sourceView = sourceView?:self.view;
+        popover.sourceRect = sourceView?sourceView.bounds:CGRectMake(0, 0, FRAME_WIDTH(self.view), CENTER_Y(self.view));
         popover.permittedArrowDirections = UIPopoverArrowDirectionAny;
     }
-    if (self.containerViewController) {
-        [self.containerViewController presentViewController:alertSheet animated:YES completion:nil];
-    }
-    else {
-        [self presentViewController:alertSheet animated:YES completion:nil];
-    }
+    [self presentViewController:alertSheet animated:YES completion:nil];
 }
 
+//MARK: Deprecated
+
+- (void)privacyCameraAuthorizationWithCompletion:(completion)completion {
+    [self privacyCameraAuthorizationWithCompletionHandler:completion];
+}
+
+- (void)privacyPhotoLibraryAuthorizationWithCompletion:(completion)completion {
+    [self privacyPhotoLibraryAuthorizationWithCompletionHandler:completion];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message sourceView:(UIView *_Nonnull)sourceView completion:(completion)completion {
+    [self showPhotoPickerWithMessage:message sourceView:sourceView completionHandler:completion];
+}
+
+- (void)showPhotoPickerWithMessage:(NSString *_Nullable)message isFront:(BOOL)isFront sourceView:(UIView *_Nonnull)sourceView completion:(completion)completion {
+    [self showPhotoPickerWithMessage:message isCameraDeviceFront:isFront sourceView:sourceView completionHandler:completion];
+}
+
+
 #pragma mark - Image picker controller delegate
+
 - (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<NSString *,id> *)info {
-    if (self.photoPickerResult) {
+    UIImage *selectPhoto = [info objectForKey:UIImagePickerControllerOriginalImage];
+    if (self.photoPickerFinishHandler) {
+        self.photoPickerFinishHandler(picker, @[selectPhoto]);
+    }
+    else if (self.photoPickerResult) {
         self.photoPickerResult(picker, info);
+        NSLog(@"[WARNING]photoPickerResult is deprecated, use photoPickerFinishHandler instead.");
     }
 }
 
@@ -591,10 +772,137 @@
 }
 
 
+#pragma mark - PHPicker view controller delegate
+
+- (void)picker:(PHPickerViewController *)picker didFinishPicking:(NSArray<PHPickerResult *> *)results API_AVAILABLE(ios(14)){
+    [picker dismissViewControllerAnimated:YES completion:nil];
+    
+    if (!results || !results.count) {
+        return;
+    }
+    if (results.count > 1) {
+        NSMutableArray *selectedPhotos = [NSMutableArray array];
+        dispatch_group_t asyncGroup = dispatch_group_create();
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+            [results enumerateObjectsUsingBlock:^(PHPickerResult * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                dispatch_group_enter(asyncGroup);
+                NSItemProvider *itemProvider = obj.itemProvider;
+                if ([itemProvider canLoadObjectOfClass:UIImage.class]) {
+                    [itemProvider loadObjectOfClass:UIImage.class completionHandler:^(__kindof id<NSItemProviderReading> _Nullable object, NSError *_Nullable error) {
+                        if ([object isKindOfClass:UIImage.class]) {
+                            [selectedPhotos addObject:object];
+                            dispatch_group_leave(asyncGroup);
+                        }
+                    }];
+                }
+            }];
+            dispatch_group_wait(asyncGroup, DISPATCH_TIME_FOREVER);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (self.photoPickerFinishHandler) {
+                    self.photoPickerFinishHandler(picker, [selectedPhotos copy]);
+                }
+            });
+        });
+    } else {
+        NSItemProvider *itemProvider = results.firstObject.itemProvider;
+        if ([itemProvider canLoadObjectOfClass:UIImage.class]) {
+            @WeakObject(self);
+            [itemProvider loadObjectOfClass:UIImage.class completionHandler:^(__kindof id<NSItemProviderReading> _Nullable object, NSError *_Nullable error) {
+                if ([object isKindOfClass:UIImage.class]) {
+                    @StrongObject(self);
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        if (self.photoPickerFinishHandler) {
+                            self.photoPickerFinishHandler(picker, @[object]);
+                        }
+                    });
+                }
+            }];
+        }
+    }
+}
+
+
+#pragma mark - Photo library change observer
+
+- (void)photoLibraryDidChange:(PHChange *)changeInstance {
+    
+}
+
+
+#pragma mark - 录音是否授权
+
+- (void)privacyMicrophoneAuthorizationWithCompletionHandler:(CompletionHandler)completionHandler {
+    // 判断录音是否获取授权
+    AVAuthorizationStatus status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio];
+    switch (status) {
+        case AVAuthorizationStatusNotDetermined:
+        {
+            // 许可对话框没有出现，发起授权许可
+            [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL granted) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (granted) {
+                        if (completionHandler) {
+                            completionHandler();
+                        }
+                    }
+                    else {
+                        [SVProgressHUD showErrorWithStatus:@"请先到设置中开启麦克风权限"];
+                    }
+                });
+            }];
+        }
+            break;
+        case AVAuthorizationStatusRestricted:
+        {
+            [SVProgressHUD showErrorWithStatus:@"请先到设置中关闭麦克风的访问限制"];
+        }
+            break;
+        case AVAuthorizationStatusDenied:
+        {
+            if (![USER_DEFAULTS boolForKey:@"Disable microphone"]) {
+                NSString *title = @"没有开启麦克风权限，是否打开设置去开启？";
+                NSString *message = @"也可以稍后从设置中开启麦克风权限。";
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
+                UIAlertAction *cancle = [UIAlertAction actionWithTitle:@"不再提示" style:UIAlertActionStyleCancel handler:^(UIAlertAction *_Nonnull action) {
+                    [USER_DEFAULTS setBool:YES forKey:@"Disable microphone"];
+                    [USER_DEFAULTS synchronize];
+                    [alert dismissViewControllerAnimated:YES completion:nil];
+                }];
+                UIAlertAction *ok = [UIAlertAction actionWithTitle:@"打开设置" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_Nonnull action) {
+                    [APPLICATION openURL:
+                         [NSURL URLWithString:UIApplicationOpenSettingsURLString] options:@{} completionHandler:nil];
+                }];
+                [alert addAction:cancle];
+                [alert addAction:ok];
+                [self presentViewController:alert animated:YES completion:nil];
+            }
+            else {
+                [SVProgressHUD showErrorWithStatus:@"请先到设置中开启麦克风权限"];
+            }
+        }
+            break;
+        case AVAuthorizationStatusAuthorized:
+        {
+            if (completionHandler) {
+                completionHandler();
+            }
+        }
+            break;
+        default:
+            break;
+    }
+}
+
+
 #pragma mark - UIGestureRecognizerDelegate
+
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer {
-    if (self.tapCustomBack) {
+    if (self.customBackHandler) {
+        self.customBackHandler(self.customBack_barButtonItem);
+        return NO;
+    } if (self.tapCustomBack) {
         self.tapCustomBack(self.customBack_barButtonItem);
+        NSLog(@"[WARNING]tapCustomBack is deprecated, use customBackHandler instead.");
         return NO;
     }
     return self.previousViewController!=nil;
@@ -603,6 +911,7 @@
 
 #pragma mark - API调用与数据源
 #pragma mark API调用任务对象集
+
 - (NSMutableArray *)dataTasks {
     if (!_dataTasks) {
         _dataTasks = [NSMutableArray array];
@@ -611,8 +920,10 @@
 }
 
 #pragma mark 添加下拉刷新，如果支持的话
+
 - (void)setRefreshEnabled:(BOOL)refreshEnabled {
     _refreshEnabled = refreshEnabled;
+        
     if (refreshEnabled) {
         UIRefreshControl *refreshControl = [[UIRefreshControl alloc] init];
         [refreshControl addTarget:self action:@selector(refresh:) forControlEvents:UIControlEventValueChanged];
@@ -622,10 +933,13 @@
         self.refreshControl = nil;
     }
 }
-- (void)refresh:(id)sender {}
+- (void)refresh:(id)sender {
+    [self loadData];
+}
 
 - (void)setMJRefreshEnabled:(BOOL)MJRefreshEnabled {
     _MJRefreshEnabled = MJRefreshEnabled;
+        
     if (MJRefreshEnabled) {
         if (!_refreshHeader) {
             _refreshHeader = [MJRefreshNormalHeader headerWithRefreshingBlock:^{
@@ -661,141 +975,11 @@
 - (void)loadData {}
 - (void)loadMoreDataWithPageNumber:(NSUInteger)pageNumber {}
 
-#pragma mark - 没有数据提示显示与隐藏（添加上拉加载更多，如果支持的话）
-- (void)showNoData {
-    if (self.containerViewController) {
-        _noDataViewHeight = self.tableViewHeight;
-    }
-    else {
-        _noDataViewHeight = FRAME_HEIGHT(self.tableView) - TOP_LAYOUT_HEIGHT;
-    }
-    if (self.tableView.tableHeaderView) {
-        _noDataViewHeight -= FRAME_HEIGHT(self.tableView.tableHeaderView);
-    }
-    if (@available(iOS 11.0, *)) {
-        _noDataViewHeight -= SAFEAREA_INSETS.bottom;
-    }
-    
-    if (!_noDataView) {
-        _noDataView = [[UIView alloc] init];
-        _noDataView.backgroundColor = COLOR_RGB_ALPHA(0xFFFFFF, 0);
-    }
-    if (!_noDataImageView) {
-        _noDataImageView = [[UIImageView alloc] init];
-        [_noDataView addSubview:_noDataImageView];
-    }
-    if (!_noDataTextLabel) {
-        _noDataTextLabel = [[UILabel alloc] init];
-        _noDataTextLabel.text = @"没有数据显示";
-        _noDataTextLabel.font = FONT_SIZE(14);
-        _noDataTextLabel.textColor = COLOR_RGB(0x999999);
-        _noDataTextLabel.textAlignment = NSTextAlignmentCenter;
-        [_noDataView addSubview:_noDataTextLabel];
-    }
-    
-    [self updateNoDataImageAndText];
-}
+#pragma mark - 没有数据提示显示与隐藏
 
-- (void)hideNoData {
-    self.tableView.tableFooterView = _customTableFooterView;
-    if (_MJRefreshEnabled) {
-        if (!_refreshFooter) {
-            _refreshFooter = [MJRefreshBackNormalFooter footerWithRefreshingBlock:^{
-                if (self.dataSource_mArray.count < self.rowsCount) {
-                    self.pageNumber++;
-                    [self loadMoreDataWithPageNumber:self.pageNumber];
-                }
-                else {
-                    [self.refreshFooter endRefreshingWithNoMoreData];
-                }
-            }];
-        }
-        self.tableView.mj_footer = _refreshFooter;
-    }
-    else {
-        self.tableView.mj_footer = nil;
-    }
-}
-
-- (void)updateNoDataImageAndText {
-    self.tableView.tableFooterView = _noDataView;
-    _noDataView.sd_layout
-    .heightIs(_noDataViewHeight);
-    
-    if (_MJRefreshEnabled) {
-        self.tableView.mj_footer = nil;
-    }
-    
-    if (_noDataImageName && _noDataText) {
-        [UIView animateWithDuration:0.2f animations:^{
-            self->_noDataImageView.hidden = NO;
-            self->_noDataTextLabel.hidden = NO;
-            
-            self->_noDataImageView.sd_layout
-            .centerXEqualToView(self->_noDataView)
-            .centerYIs((self->_noDataViewHeight/2)-((self->_noDataImageHeight>0?self->_noDataImageHeight:100)/2)-5)
-            .widthIs(self->_noDataImageWidth>0?self->_noDataImageWidth:100)
-            .heightIs(self->_noDataImageHeight>0?self->_noDataImageHeight:100);
-            
-            self->_noDataTextLabel.sd_layout
-            .centerXEqualToView(self->_noDataView)
-            .centerYIs(self->_noDataView.centerY_sd+30*(self->_noDataTextLines>0?self->_noDataTextLines:1)/2+5)
-            .widthIs(self->_noDataTextWidth>0?self->_noDataTextWidth:160)
-            .heightIs(30*(self->_noDataTextLines>0?self->_noDataTextLines:1));
-            
-            [self->_noDataImageView updateLayout];
-            [self->_noDataTextLabel updateLayout];
-        }];
-    }
-    else if (_noDataImageName && !_noDataText) {
-        [UIView animateWithDuration:0.2f animations:^{
-            self->_noDataImageView.hidden = NO;
-            self->_noDataTextLabel.hidden = YES;
-            self->_noDataImageView.sd_layout
-            .centerXEqualToView(self->_noDataView)
-            .centerYIs(self->_noDataViewHeight/2)
-            .widthIs(self->_noDataImageWidth>0?self->_noDataImageWidth:100)
-            .heightIs(self->_noDataImageHeight>0?self->_noDataImageHeight:100);
-            
-            [self->_noDataImageView updateLayout];
-            [self->_noDataTextLabel updateLayout];
-        }];
-    }
-    else if (!_noDataImageName && _noDataText) {
-        [UIView animateWithDuration:0.2f animations:^{
-            self->_noDataImageView.hidden = YES;
-            self->_noDataTextLabel.hidden = NO;
-            self->_noDataTextLabel.sd_layout
-            .centerXEqualToView(self->_noDataView)
-            .centerYIs(self->_noDataViewHeight/2)
-            .widthIs(self->_noDataTextWidth>0?self->_noDataTextWidth:160)
-            .heightIs(30*(self->_noDataTextLines>0?self->_noDataTextLines:1));
-            
-            [self->_noDataImageView updateLayout];
-            [self->_noDataTextLabel updateLayout];
-        }];
-    }
-    else {
-        [UIView animateWithDuration:0.2f animations:^{
-            self->_noDataImageView.hidden = YES;
-            self->_noDataTextLabel.hidden = NO;
-            self->_noDataTextLabel.sd_layout
-            .centerXEqualToView(self->_noDataView)
-            .centerYIs(self->_noDataViewHeight/2)
-            .widthIs(160)
-            .heightIs(30);
-            
-            [self->_noDataImageView updateLayout];
-            [self->_noDataTextLabel updateLayout];
-        }];
-    }
-}
-
-#pragma mark 没有数据提示自定义项
 - (void)initImageViewWithImage {
     if (!_noDataView) {
         _noDataView = [[UIView alloc] init];
-        _noDataView.backgroundColor = COLOR_RGB_ALPHA(0xFFFFFF, 0);
     }
     if (!_noDataImageView) {
         _noDataImageView = [[UIImageView alloc] init];
@@ -803,9 +987,9 @@
     }
     if (_noDataImageExt && [_noDataImageExt isEqualToString:@"gif"]) {
         NSString *resourcePath = [[NSBundle mainBundle] resourcePath];
-        UIImage *image = [UIImage imageWithContentsOfFile:FORMAT_STRING(@"%@/%@.%@", resourcePath, _noDataImageName, _noDataImageExt)];
-        NSData *image_data = [NSData dataWithContentsOfFile:FORMAT_STRING(@"%@/%@@%.0fx.%@", resourcePath, _noDataImageName, image.scale, _noDataImageExt)];
-        UIImage *animated_image = [UIImage sd_animatedGIFWithData:image_data];
+        UIImage *image = [UIImage imageWithContentsOfFile:STRING_FORMAT(@"%@/%@.%@", resourcePath, _noDataImageName, _noDataImageExt)];
+        NSData *image_data = [NSData dataWithContentsOfFile:STRING_FORMAT(@"%@/%@@%.0fx.%@", resourcePath, _noDataImageName, image.scale, _noDataImageExt)];
+        UIImage *animated_image = [UIImage sd_imageWithGIFData:image_data];
         _noDataImageView.image = animated_image;
     }
     else {
@@ -843,7 +1027,6 @@
 - (void)initTextLabelWithText {
     if (!_noDataView) {
         _noDataView = [[UIView alloc] init];
-        _noDataView.backgroundColor = COLOR_RGB_ALPHA(0xFFFFFF, 0);
     }
     if (!_noDataImageView) {
         _noDataImageView = [[UIImageView alloc] init];
@@ -854,12 +1037,22 @@
         [_noDataView addSubview:_noDataTextLabel];
     }
     _noDataTextLabel.text = _noDataText?:@"没有数据显示";
-    _noDataTextLabel.font = FONT_SIZE(14);
-    _noDataTextLabel.textColor = COLOR_RGB(0x999999);
+    _noDataTextLabel.font = _noDataTextFont?:FONT_SIZE(14);
+    _noDataTextLabel.textColor = _noDataTextColor?:COLOR_HEXSTRING(@"#999999");
     _noDataTextLabel.textAlignment = NSTextAlignmentCenter;
     _noDataTextLabel.numberOfLines = _noDataTextLines;
     
     [self updateNoDataImageAndText];
+}
+- (void)setNoDataTextFont:(UIFont *)noDataTextFont {
+    _noDataTextFont = noDataTextFont;
+    
+    [self initTextLabelWithText];
+}
+- (void)setNoDataTextColor:(UIColor *)noDataTextColor {
+    _noDataTextColor = noDataTextColor;
+    
+    [self initTextLabelWithText];
 }
 - (void)setNoDataText:(NSString *)noDataText {
     [self setNoDataText:noDataText width:0 lines:1];
@@ -879,23 +1072,196 @@
     [self initTextLabelWithText];
 }
 
-
-#pragma mark - Keyboard notification
-- (void)keyboardWillShow:(NSNotification *)aNotification
-{
-    //获取键盘的高度
-    if (_focusedContentOffset.y > 0) {
-        [self.tableView setContentOffset:CGPointMake(0, _focusedContentOffset.y-10)];
+- (void)updateNoDataImageAndText {
+    if (!_noDataViewHeight) {
+        _noDataViewHeight = FRAME_HEIGHT(self.tableView) - TOP_LAYOUT_HEIGHT;
+        if (self.tableView.tableHeaderView) {
+            _noDataViewHeight -= FRAME_HEIGHT(self.tableView.tableHeaderView);
+        }
+        if (self.tableView.tableFooterView) {
+            _noDataViewHeight -= FRAME_HEIGHT(self.tableView.tableFooterView);
+        }
+        _noDataViewHeight -= SAFEAREA_INSETS.bottom;
+    }
+    
+    if (!_customTableFooterView) {
+        if (self.tableView.tableFooterView) {
+            _customTableFooterView = self.tableView.tableFooterView;
+        }
+        else {
+            _customTableFooterView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, FRAME_WIDTH(self.tableView), 0.5)];
+            _customTableFooterView.backgroundColor = COLOR_HEXSTRING_ALPHA(@"#FFFFFF", 0);
+        }
+    }
+    
+    self.tableView.tableFooterView = _noDataView;
+    _noDataView.backgroundColor = _enableNoDataDebug ? COLOR_HEXSTRING_ALPHA(@"#FF0000", 0.5) : COLOR_HEXSTRING_ALPHA(@"#FFFFFF", 1);
+    _noDataView.sd_layout
+    .heightIs(_noDataViewHeight);
+    
+    if (_MJRefreshEnabled) {
+        self.tableView.mj_footer = nil;
+    }
+    
+    if (_noDataImageName && _noDataText) {
+        [UIView animateWithDuration:0.2f animations:^{
+            self->_noDataImageView.hidden = NO;
+            self->_noDataTextLabel.hidden = NO;
+            
+            self->_noDataImageView.sd_layout
+            .centerXEqualToView(self->_noDataView)
+            .centerYIs((self->_noDataViewHeight/2)-((self->_noDataImageHeight>0?self->_noDataImageHeight:100)/2)-5)
+            .widthIs(self->_noDataImageWidth>0?self->_noDataImageWidth:100)
+            .heightIs(self->_noDataImageHeight>0?self->_noDataImageHeight:100);
+            
+            self->_noDataTextLabel.sd_layout
+            .centerXEqualToView(self->_noDataView)
+            .centerYIs(self->_noDataView.centerY_sd+30*(self->_noDataTextLines>0?self->_noDataTextLines:1)/2+5)
+            .widthIs(self->_noDataTextWidth>0?self->_noDataTextWidth:160)
+            .heightIs(30*(self->_noDataTextLines>0?self->_noDataTextLines:1));
+            
+            self->_noDataImageView.backgroundColor = self->_enableNoDataDebug ? COLOR_HEXSTRING_ALPHA(@"#00FF00", 0.5) : COLOR_HEXSTRING_ALPHA(@"#FFFFFF", 0);
+            self->_noDataTextLabel.backgroundColor = self->_enableNoDataDebug ? COLOR_HEXSTRING_ALPHA(@"#0000FF", 0.5) : COLOR_HEXSTRING_ALPHA(@"#FFFFFF", 0);
+            
+            [self->_noDataImageView updateLayout];
+            [self->_noDataTextLabel updateLayout];
+        }];
+    }
+    else if (_noDataImageName && !_noDataText) {
+        [UIView animateWithDuration:0.2f animations:^{
+            self->_noDataImageView.hidden = NO;
+            self->_noDataTextLabel.hidden = YES;
+            
+            self->_noDataImageView.sd_layout
+            .centerXEqualToView(self->_noDataView)
+            .centerYIs(self->_noDataViewHeight/2)
+            .widthIs(self->_noDataImageWidth>0?self->_noDataImageWidth:100)
+            .heightIs(self->_noDataImageHeight>0?self->_noDataImageHeight:100);
+            
+            self->_noDataImageView.backgroundColor = self->_enableNoDataDebug ? COLOR_HEXSTRING_ALPHA(@"#00FF00", 0.5) : COLOR_HEXSTRING_ALPHA(@"#FFFFFF", 0);
+            
+            [self->_noDataImageView updateLayout];
+        }];
+    }
+    else if (!_noDataImageName && _noDataText) {
+        [UIView animateWithDuration:0.2f animations:^{
+            self->_noDataImageView.hidden = YES;
+            self->_noDataTextLabel.hidden = NO;
+            
+            self->_noDataTextLabel.sd_layout
+            .centerXEqualToView(self->_noDataView)
+            .centerYIs(self->_noDataViewHeight/2)
+            .widthIs(self->_noDataTextWidth>0?self->_noDataTextWidth:160)
+            .heightIs(30*(self->_noDataTextLines>0?self->_noDataTextLines:1));
+            
+            self->_noDataTextLabel.backgroundColor = self->_enableNoDataDebug ? COLOR_HEXSTRING_ALPHA(@"#0000FF", 0.5) : COLOR_HEXSTRING_ALPHA(@"#FFFFFF", 0);
+            
+            [self->_noDataTextLabel updateLayout];
+        }];
+    }
+    else {
+        [UIView animateWithDuration:0.2f animations:^{
+            self->_noDataImageView.hidden = YES;
+            self->_noDataTextLabel.hidden = NO;
+            
+            self->_noDataTextLabel.sd_layout
+            .centerXEqualToView(self->_noDataView)
+            .centerYIs(self->_noDataViewHeight/2)
+            .widthIs(160)
+            .heightIs(30);
+            
+            self->_noDataTextLabel.backgroundColor = self->_enableNoDataDebug ? COLOR_HEXSTRING_ALPHA(@"#0000FF", 0.5) : COLOR_HEXSTRING_ALPHA(@"#FFFFFF", 0);
+            
+            [self->_noDataTextLabel updateLayout];
+        }];
     }
 }
 
-- (void)keyboardWillHide:(NSNotification *)aNotification
-{
+- (void)showNoData {
+    if (!_noDataView) {
+        _noDataView = [[UIView alloc] init];
+    }
+    if (!_noDataImageView) {
+        _noDataImageView = [[UIImageView alloc] init];
+        [_noDataView addSubview:_noDataImageView];
+    }
+    if (!_noDataTextLabel) {
+        _noDataTextLabel = [[UILabel alloc] init];
+        _noDataTextLabel.text = @"没有数据显示";
+        _noDataTextLabel.font = _noDataTextFont?:FONT_SIZE(14);
+        _noDataTextLabel.textColor = _noDataTextColor?:COLOR_HEXSTRING(@"#999999");
+        _noDataTextLabel.textAlignment = NSTextAlignmentCenter;
+        [_noDataView addSubview:_noDataTextLabel];
+    }
+    
+    [self updateNoDataImageAndText];
+}
+
+- (void)hideNoData {
+    self.tableView.tableFooterView = _customTableFooterView;
+    if (_MJRefreshEnabled) {
+        if (!_refreshFooter) {
+            _refreshFooter = [MJRefreshBackNormalFooter footerWithRefreshingBlock:^{
+                if (self.dataSource_mArray.count < self.rowsCount) {
+                    self.pageNumber++;
+                    [self loadMoreDataWithPageNumber:self.pageNumber];
+                }
+                else {
+                    [self.refreshFooter endRefreshingWithNoMoreData];
+                }
+            }];
+        }
+        self.tableView.mj_footer = _refreshFooter;
+    }
+    else {
+        self.tableView.mj_footer = nil;
+    }
+}
+
+
+#pragma mark - 调整 tableView的边距以适应键盘
+
+- (void)setFocusedControl:(id)focusedControl {
+    _focusedControl = focusedControl;
+}
+
+- (void)setAdjustTableViewEdgeInsetsToFitKeyboard:(BOOL)isAdjust {
+    _adjustTableViewEdgeInsetsToFitKeyboard = isAdjust;
+    
+    if (isAdjust) {
+        [NOTIFICATION_CENTER addObserver:self
+                                selector:@selector(keyboardWillShow:)
+                                    name:UIKeyboardWillShowNotification
+                                  object:nil];
+        [NOTIFICATION_CENTER addObserver:self
+                                selector:@selector(keyboardWillHide:)
+                                    name:UIKeyboardWillHideNotification
+                                  object:nil];
+    }
+    else {
+        [self removeNotification];
+    }
+}
+
+
+#pragma mark - Keyboard notification
+
+- (void)keyboardWillShow:(NSNotification *)aNotification {
+    NSDictionary *userInfo = [aNotification userInfo];
+    NSValue *aValue = [userInfo objectForKey:UIKeyboardFrameEndUserInfoKey];
+    CGRect keyboardRect = [aValue CGRectValue];
+    CGFloat keyboardHeight = keyboardRect.size.height;
+    CGFloat contentInsetBottom = _focusedControl? self.tableView.contentSize.height-([_focusedControl.superview convertPoint:FRAME_ORIGIN(_focusedControl) toView:self.tableView].y+FRAME_HEIGHT(_focusedControl)+(FRAME_HEIGHT(_focusedControl.superview)-FRAME_HEIGHT(_focusedControl))/2): self.tableView.contentInset.bottom;
+    self.tableView.contentInset = UIEdgeInsetsMake(self.tableView.contentInset.top, self.tableView.contentInset.left, contentInsetBottom>keyboardHeight? keyboardHeight: contentInsetBottom, self.tableView.contentInset.right);
+}
+
+- (void)keyboardWillHide:(NSNotification *)aNotification {
     [self.tableView setContentInset:UIEdgeInsetsZero];
 }
 
 
 #pragma mark - 导航
+
 // 弹出或者推基于 storyboard 的控制器，过程中可能需要在这里做一点点处理
 - (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
     [super prepareForSegue:segue sender:sender];
@@ -905,35 +1271,11 @@
     
     if ([destViewController isKindOfClass:[EFBaseNavigationController class]]) { // dest present modally
         EFBaseNavigationController *presented_NC = (EFBaseNavigationController *)destViewController;
-        if (((EFBaseViewController *)srcViewController).containerViewController) { // src embed
-            presented_NC.originalViewController = ((EFBaseViewController *)srcViewController).containerViewController;
-        }
-        else {
-            presented_NC.originalViewController = srcViewController;
-        }
+        presented_NC.originalViewController = srcViewController;
     }
-    else if ([destViewController isKindOfClass:[EFBaseViewController class]]) {
+    else if ([destViewController isKindOfClass:[EFBaseViewController class]] || [destViewController isKindOfClass:[EFBaseTableViewController class]]) {
         EFBaseViewController *baseVC = destViewController;
-        if (((EFBaseViewController *)srcViewController).containerViewController) { // src embed
-            baseVC.previousViewController = ((EFBaseViewController *)srcViewController).containerViewController;
-        }
-        else {
-            baseVC.previousViewController = srcViewController;
-        }
-    }
-    else if ([destViewController isKindOfClass:[EFBaseTableViewController class]]) {
-        EFBaseViewController *baseVC = destViewController;
-        if (srcViewController == sender) { // dest embed
-            baseVC.containerViewController = srcViewController;
-        }
-        else {
-            if (((EFBaseViewController *)srcViewController).containerViewController) { // src embed
-                baseVC.previousViewController = ((EFBaseViewController *)srcViewController).containerViewController;
-            }
-            else {
-                baseVC.previousViewController = srcViewController;
-            }
-        }
+        baseVC.previousViewController = srcViewController;
     }
 }
 

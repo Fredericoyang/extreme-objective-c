@@ -1,12 +1,12 @@
 //
-//  showNoDataImageText_TVC.m
+//  ShowNoDataImageText_TVC.m
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2018/6/10.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
-#import "showNoDataImageText_TVC.h"
+#import "ShowNoDataImageText_TVC.h"
 
 @interface showNoDataImageText_TVC ()
 
@@ -17,6 +17,7 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    self.enableNoDataDebug = EFUIKit_enableDebug;
     [self setNoDataImageName:@"car_animated" noDataImageExt:@"gif" width:90 height:90];
     [self setNoDataText:@"图标图像还可以设置动图\n文字也可以设置不止一行呢" width:SCREEN_WIDTH lines:2];
     [self showNoData];

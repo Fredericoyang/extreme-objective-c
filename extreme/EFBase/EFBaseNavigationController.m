@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/8/1.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "EFBaseNavigationController.h"
@@ -29,6 +29,7 @@
 //MARK: 导航栏
 - (void)setNavigationBarStyle:(EFBarStyle)navigationBarStyle {
     _navigationBarStyle = navigationBarStyle;
+    
     if (EFBarStyleDefault == navigationBarStyle) {
         self.navigationBar.barStyle = UIBarStyleDefault;
         

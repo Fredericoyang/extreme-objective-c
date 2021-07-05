@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2018/6/9.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "CustomBackButton_VC.h"
@@ -17,45 +17,33 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    self.customBack_barButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"自定义返回按钮" style:UIBarButtonItemStylePlain target:self action:@selector(customBack:)];
+    UIBarButtonItem *another_barButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"关闭自定义" style:UIBarButtonItemStylePlain target:self action:@selector(buttonAction:)];
+    self.navigationItem.leftBarButtonItem = another_barButtonItem;
+    
     self.useCustomBack = YES;
     
-    if (self.isUseCustomBack) {
-        UIBarButtonItem *back_barButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"关闭自定义" style:UIBarButtonItemStylePlain target:self action:@selector(pop:)];
-        self.navigationItem.leftBarButtonItems = @[self.customBack_barButtonItem, back_barButtonItem];
-    }
-    
-    @WeakObj(self);
-    self.tapCustomBack = ^(id sender) {
-        @StrongObj(self);
-        UIBarButtonItem *button = sender;
-        if ([button.title isEqualToString:@"自定义返回按钮"]) {
-            self.customBack_barButtonItem = nil;
-        }
-        else {
-            self.customBack_barButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"自定义返回按钮" style:UIBarButtonItemStylePlain target:self action:@selector(customBack:)];
-        }
+    @WeakObject(self);
+    self.customBackHandler = ^(id sender) {
+        @StrongObject(self);
+        [SVProgressHUD showInfoWithStatus:@"自定义返回"];
+        [self performSelector:@selector(buttonAction:) withObject:sender];
     };
 }
 
 
-- (void)customBack:(id)sender {
-    self.customBack_barButtonItem = nil;
-}
-
-- (void)pop:(id)sender {
+- (void)buttonAction:(id)sender {
     if (self.isUseCustomBack) {
-        UIBarButtonItem *button = sender;
-        if ([button.title isEqualToString:@"关闭自定义"]) {
-            self.navigationItem.leftBarButtonItems = @[self.customBack_barButtonItem];
-            self.useCustomBack = NO;
-            if (self.tapCustomBack) {
-                self.tapCustomBack = nil;
-            }
+        self.useCustomBack = NO;
+        if (self.customBackHandler) {
+            self.customBackHandler = nil;
+        }
+        UIBarButtonItem *another_barButtonItem = self.navigationItem.leftBarButtonItems.lastObject;
+        if ([another_barButtonItem.title isEqualToString:@"关闭自定义"]) {
+            another_barButtonItem.title = @"移除";
         }
     }
     else {
-        [SVProgressHUD showInfoWithStatus:@"必须先启用 useCustomBack"];
+        [self.navigationItem setLeftBarButtonItems:nil animated:YES];
     }
 }
 

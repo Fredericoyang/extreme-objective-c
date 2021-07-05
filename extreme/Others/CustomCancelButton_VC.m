@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2018/6/9.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "CustomCancelButton_VC.h"
@@ -17,41 +17,54 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
-    self.customCancel_barButtonItem = [[UIBarButtonItem alloc] initWithImage:IMAGE(@"extreme.bundle/back") style:UIBarButtonItemStylePlain target:self action:@selector(customCancel:)];
+    UIBarButtonItem *another_barButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"关闭自定义" style:UIBarButtonItemStylePlain target:self action:@selector(buttonAction:)];
+    NSMutableArray *leftBarButtonItems = [NSMutableArray arrayWithArray:self.navigationItem.leftBarButtonItems];
+    [leftBarButtonItems addObject:another_barButtonItem];
+    [self.navigationItem setLeftBarButtonItems:leftBarButtonItems animated:YES];
     
-    UIBarButtonItem *cancel_barButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"关闭自定义" style:UIBarButtonItemStylePlain target:self action:@selector(dismiss:)];
+//    self.customCancel_barButtonItem = [[UIBarButtonItem alloc] initWithImage:IMAGE(@"extreme.bundle/icon-close-modal") style:UIBarButtonItemStylePlain target:self action:@selector(buttonAction:)];
     
-    self.navigationItem.leftBarButtonItems = @[self.customCancel_barButtonItem, cancel_barButtonItem];
-    
-    @WeakObj(self);
-    self.tapCustomCancel = ^(id sender) {
-        @StrongObj(self);
-        UIBarButtonItem *button = sender;
-        if (button.image) {
-            self.customCancel_barButtonItem = nil;
-        }
-        else {
-            self.customCancel_barButtonItem = [[UIBarButtonItem alloc] initWithImage:IMAGE(@"extreme.bundle/back") style:UIBarButtonItemStylePlain target:self action:@selector(customCancel:)];
-        }
+    @WeakObject(self);
+    self.customCancelHandler = ^(id sender) {
+        @StrongObject(self);
+        [SVProgressHUD showInfoWithStatus:@"自定义取消"];
+        [self performSelector:@selector(buttonAction:) withObject:sender];
     };
 }
 
-
-- (void)customCancel:(id)sender {
-    self.customCancel_barButtonItem = nil;
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    
+    self.navigationBarStyle = EFBarStyleBlack;
 }
 
-- (void)dismiss:(id)sender {
-    UIBarButtonItem *button = sender;
-    if ([button.title isEqualToString:@"关闭自定义"]) {
-        self.navigationItem.leftBarButtonItems = @[self.customCancel_barButtonItem];
+
+- (void)buttonAction:(id)sender {
+    if (self.customCancel_barButtonItem) {
         self.customCancel_barButtonItem = nil;
-        if (self.tapCustomCancel) {
-            self.tapCustomCancel = nil;
+        if (self.customCancelHandler) {
+            self.customCancelHandler = nil;
+        }
+        
+        UIBarButtonItem *another_barButtonItem = self.navigationItem.leftBarButtonItems.lastObject;
+        if ([another_barButtonItem.title isEqualToString:@"关闭自定义"]) {
+            another_barButtonItem.title = @"移除";
         }
     }
     else {
-        [self dismissViewControllerAnimated:YES completion:nil];
+        if (self.customCancelHandler) {
+            self.customCancelHandler = nil;
+            
+            UIBarButtonItem *another_barButtonItem = self.navigationItem.leftBarButtonItems.lastObject;
+            if ([another_barButtonItem.title isEqualToString:@"关闭自定义"]) {
+                another_barButtonItem.title = @"移除";
+            }
+        }
+        else {
+            NSMutableArray *leftBarButtonItems = [NSMutableArray arrayWithArray:self.navigationItem.leftBarButtonItems];
+            [leftBarButtonItems removeLastObject];
+            [self.navigationItem setLeftBarButtonItems:leftBarButtonItems animated:YES];
+        }
     }
 }
 

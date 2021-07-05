@@ -1,12 +1,12 @@
 //
-//  showNoDataImage_TVC.m
+//  ShowNoDataImage_TVC.m
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2018/6/10.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
-#import "showNoDataImage_TVC.h"
+#import "ShowNoDataImage_TVC.h"
 
 @interface showNoDataImage_TVC ()
 
@@ -17,6 +17,7 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    self.enableNoDataDebug = EFUIKit_enableDebug;
     [self setNoDataImageName:@"extreme.bundle/no_bill" width:88 height:105];
     [self showNoData];
 }

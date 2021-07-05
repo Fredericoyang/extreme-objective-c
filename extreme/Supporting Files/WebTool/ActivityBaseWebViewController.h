@@ -3,13 +3,13 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/12/22.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 @interface ActivityBaseWebViewController : EFBaseWebViewController
 
 /**
- 要显示Web页面的URL
+ 要显示 Web页面的 URL
  */
 @property (copy, nonatomic, nonnull) NSString *url;
 
@@ -19,10 +19,13 @@
 @property (assign, nonatomic) BOOL needReloadByStep;
 
 
-// Web view代理基类
-- (BOOL)webView:(UIWebView *_Nonnull)webView shouldStartLoadWithRequest:(NSURLRequest *_Nonnull)request navigationType:(UIWebViewNavigationType)navigationType;
-- (void)webViewDidStartLoad:(UIWebView *_Nonnull)webView;
-- (void)webViewDidFinishLoad:(UIWebView *_Nonnull)webView;
-- (void)webView:(UIWebView *_Nonnull)webView didFailLoadWithError:(NSError *_Nullable)error;
+// Based on web kit navigation delegate
+- (void)webView:(WKWebView *_Nonnull)webView didCommitNavigation:(null_unspecified WKNavigation *)navigation;
+- (void)webView:(WKWebView *_Nonnull)webView didFinishNavigation:(null_unspecified WKNavigation *)navigation;
+- (void)webView:(WKWebView *_Nonnull)webView didFailNavigation:(null_unspecified WKNavigation *)navigation withError:(NSError *_Nonnull)error;
+- (void)webViewWebContentProcessDidTerminate:(WKWebView *_Nonnull)webView;
+
+// Web kit script message handler
+- (void)userContentController:(WKUserContentController *_Nonnull)userContentController didReceiveScriptMessage:(WKScriptMessage *_Nonnull)message;
 
 @end

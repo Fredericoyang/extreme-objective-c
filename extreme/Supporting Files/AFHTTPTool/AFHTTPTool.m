@@ -3,7 +3,7 @@
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2017/8/1.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
 #import "AFHTTPTool.h"
@@ -12,6 +12,7 @@
 @implementation AFHTTPError
 
 #pragma mark 系统级错误
+
 - (instancetype)initWithError:(NSError *_Nonnull)error url:(NSString *_Nonnull)url {
     self = [super init];
     if (self) {
@@ -22,7 +23,7 @@
                                                                error:nil];
         }
         if (!_errorResponse) {
-            _errorCode = FORMAT_STRING(@"%ld", (long)error.code);
+            _errorCode = STRING_FORMAT(@"%ld", (long)error.code);
             _errorDescription = error.localizedDescription;
             if (data) {
                 _errorMessage = @"For more detail see errorResponse";
@@ -40,6 +41,7 @@
 }
 
 #pragma mark 用户级错误
+
 - (instancetype)initWithErrorCode:(NSString *_Nonnull)errorCode errorDescription:(NSString *_Nonnull)errorDescription url:(NSString *_Nonnull)url {
     self = [super init];
     if (self) {
@@ -60,6 +62,7 @@
 
 
 #pragma mark - 请求错误自定义视图类
+
 @implementation AFHTTPRetryView {
     UILabel *_info_label;
 }
@@ -78,14 +81,14 @@
     [self addSubview:imageView];
     _info_label = [[UILabel alloc] init];
     _info_label.font = FONT_SIZE(14);
-    _info_label.textColor = COLOR_RGB(0x999999);
+    _info_label.textColor = COLOR_HEXSTRING(@"#999999");
     _info_label.textAlignment = NSTextAlignmentCenter;
     _info_label.numberOfLines = 0;
     _info_label.text = @"未连接互联网";
     [self addSubview:_info_label];
     UIButton *retry_button = [UIButton buttonWithType:UIButtonTypeCustom];
     [retry_button setTitle:@"点击重试" forState:UIControlStateNormal];
-    [retry_button setTitleColor:COLOR_RGB(0x448ACA) forState:UIControlStateNormal];
+    [retry_button setTitleColor:COLOR_HEXSTRING(@"#448ACA") forState:UIControlStateNormal];
     retry_button.titleLabel.font = FONT_SIZE(14);
     [retry_button addTarget:self action:@selector(tapToRetry:) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:retry_button];
@@ -137,10 +140,11 @@
 @implementation AFHTTPTool
 
 #pragma mark - 显示自定义错误提示
+
 + (void)showHTTPRetryView:(AFHTTPRequestProperties *_Nonnull)requestProperties {
     // 只显示一次
     BOOL isHTTPRetryViewShow = NO;
-    for (UIView *subview in WINDOW.subviews) {
+    for (UIView *subview in APP_DELEGATE.window.subviews) {
         if (10001 == subview.tag) {
             isHTTPRetryViewShow = YES;
             break;
@@ -151,14 +155,14 @@
     }
     
     AFHTTPRetryView *retryView = [[AFHTTPRetryView alloc] init];
-    retryView.backgroundColor = COLOR_RGB(0xFFFFFF);
+    retryView.backgroundColor = COLOR_HEXSTRING(@"#FFFFFF");
     retryView.borderWidth = 0.5;
-    retryView.borderColor = COLOR_RGB(0xE6E6E6);
+    retryView.borderColor = COLOR_HEXSTRING(@"#E6E6E6");
     retryView.cornerRadius = 3;
     retryView.requestProperties = requestProperties;
     retryView.retry_info = requestProperties.info_string;
     retryView.retryBlock = ^(id sender) {
-        for (UIView *subview in WINDOW.subviews) {
+        for (UIView *subview in APP_DELEGATE.window.subviews) {
             if (10001 == subview.tag) {
                 AFHTTPRequestProperties *requestProperties = ((AFHTTPRetryView *)subview.subviews[0]).requestProperties;
                 [subview removeFromSuperview];
@@ -197,9 +201,9 @@
     };
     UIView *backgroundView = [[UIView alloc] init];
     backgroundView.tag = 10001;
-    backgroundView.backgroundColor = COLOR_RGB_ALPHA(0x000000, 0.3);
+    backgroundView.backgroundColor = COLOR_HEXSTRING_ALPHA(@"#000000", 0.3);
     [backgroundView addSubview:retryView];
-    [WINDOW addSubview:backgroundView];
+    [APP_DELEGATE.window addSubview:backgroundView];
     
     retryView.sd_layout
     .widthIs(230)
@@ -213,7 +217,8 @@
 
 
 #pragma mark - 获取manager实例
-+ (AFHTTPSessionManager *_Nonnull)managerForRequestType:(AFHTTPRequestType)requestType authorized:(BOOL)authorized {
+
++ (AFHTTPSessionManager *_Nonnull)managerForRequestType:(AFHTTPRequestType)requestType {
     AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
     if (AFHTTPRequestTypeHTTP == requestType) {
         manager.requestSerializer = [AFHTTPRequestSerializer serializer];
@@ -222,18 +227,6 @@
         manager.requestSerializer = [AFJSONRequestSerializer serializer];
     }
     manager.requestSerializer.timeoutInterval = AFHTTPToolRequestTimeout;
-    if (authorized) {
-        NSString *token = [USER_DEFAULTS objectForKey:@"token"];
-        if (token) {
-            [manager.requestSerializer setValue:FORMAT_STRING(@"Bearer %@", token) forHTTPHeaderField:@"Authorization"];
-        }
-#if PrintResponseLog
-        LOG(@"----Header Token:%@----", FORMAT_STRING(@"Bearer %@", token));
-        if (!token) { // 开发时添加默认值，避免接口报错
-            [manager.requestSerializer setValue:@"Bearer " forHTTPHeaderField:@"Authorization"];
-        }
-#endif
-    }
     manager.responseSerializer = [AFJSONResponseSerializer serializer];
     return manager;
 }
@@ -283,15 +276,15 @@ NSString *AFHTTPMethodTypeString(AFHTTPMethodType methodType) {
  */
 + (void)printRequestLog:(AFHTTPRequestProperties *_Nonnull)requestProperties {
 #if PrintRequestLog
-    LOG(@"##################");
-    LOG(@"----发送%@请求----", AFHTTPMethodTypeString(requestProperties.methodType));
-    LOG(@"%@", requestProperties.url);
-    LOG(@"----请求类型---");
-    LOG(@"%@", requestProperties.requestType==AFHTTPRequestTypeHTTP?@"HTTP":@"JSON");
-    LOG(@"---以下为参数---");
-    LOG(@"%@", requestProperties.params);
-    LOG(@"---以上为参数---");
-    LOG(@"##################");
+    LOG_FORMAT(@"##################");
+    LOG_FORMAT(@"----发送%@请求----", AFHTTPMethodTypeString(requestProperties.methodType));
+    LOG_FORMAT(@"%@", requestProperties.url);
+    LOG_FORMAT(@"----请求类型---");
+    LOG_FORMAT(@"%@", requestProperties.requestType==AFHTTPRequestTypeHTTP?@"HTTP":@"JSON");
+    LOG_FORMAT(@"---以下为参数---");
+    LOG_FORMAT(@"%@", requestProperties.params);
+    LOG_FORMAT(@"---以上为参数---");
+    LOG_FORMAT(@"##################");
 #endif
 }
 
@@ -300,17 +293,17 @@ NSString *AFHTTPMethodTypeString(AFHTTPMethodType methodType) {
  */
 + (void)printResponseLog:(AFHTTPRequestProperties *_Nonnull)requestProperties response:(id _Nullable)responseObject {
 #if PrintResponseLog
-    LOG(@"==================");
-    LOG(@"----%@请求响应----", AFHTTPMethodTypeString(requestProperties.methodType));
-    LOG(@"%@", requestProperties.url);
-    LOG(@"----请求类型---");
-    LOG(@"%@", requestProperties.requestType==AFHTTPRequestTypeHTTP?@"HTTP":@"JSON");
-    LOG(@"---以下为参数---");
-    LOG(@"%@", requestProperties.params);
-    LOG(@"以下为数据");
-    LOG(@"%@", responseObject);
-    LOG(@"以上为数据");
-    LOG(@"==================");
+    LOG_FORMAT(@"==================");
+    LOG_FORMAT(@"----%@请求响应----", AFHTTPMethodTypeString(requestProperties.methodType));
+    LOG_FORMAT(@"%@", requestProperties.url);
+    LOG_FORMAT(@"----请求类型---");
+    LOG_FORMAT(@"%@", requestProperties.requestType==AFHTTPRequestTypeHTTP?@"HTTP":@"JSON");
+    LOG_FORMAT(@"---以下为参数---");
+    LOG_FORMAT(@"%@", requestProperties.params);
+    LOG_FORMAT(@"以下为数据");
+    LOG_FORMAT(@"%@", responseObject);
+    LOG_FORMAT(@"以上为数据");
+    LOG_FORMAT(@"==================");
 #endif
 }
 
@@ -324,15 +317,31 @@ NSString *AFHTTPMethodTypeString(AFHTTPMethodType methodType) {
     requestProperties.result = result;
     [AFHTTPTool printRequestLog:requestProperties];
     
-    AFHTTPSessionManager *manager = [AFHTTPTool managerForRequestType:requestType authorized:authorized];
-    return [manager GET:url parameters:params progress:nil success:^(NSURLSessionDataTask *_Nonnull task, id _Nullable responseObject) {
+    AFHTTPSessionManager *manager = [AFHTTPTool managerForRequestType:requestType];
+    NSMutableDictionary *headers;
+    if (authorized) {
+        headers = [[NSMutableDictionary alloc] init];
+        NSString *token = [USER_DEFAULTS objectForKey:@"Token"];
+        if (token) {
+#if PrintResponseLog
+            LOG_FORMAT(@"----Header Token:%@----", STRING_FORMAT(@"Bearer %@", token));
+#endif
+            [headers setValue:STRING_FORMAT(@"Bearer %@", token) forKey:@"Authorization"];
+        }
+#if PrintResponseLog
+        else { // 开发时添加默认值，避免接口报错
+            [headers setValue:@"Bearer " forKey:@"Authorization"];
+        }
+#endif
+    }
+    return [manager GET:url parameters:params headers:headers progress:nil success:^(NSURLSessionDataTask *_Nonnull task, id _Nullable responseObject) {
         [AFHTTPTool printResponseLog:requestProperties response:responseObject];
         
-        if ([EFUtils objectValueIsEqualTo:0 dictionary:responseObject withKey:errorCode_key]) {
+        if ([EFUtils objectValueIsEqualTo:statusCode_success dictionary:responseObject withKey:statusCode_key]) {
             result(YES, responseObject);
         }
         else {
-            AFHTTPError *http_error = [[AFHTTPError alloc] initWithErrorCode:[EFUtils stringFromDictionary:responseObject withKey:errorCode_key]?:@"-999" errorDescription:![EFUtils objectIsNull:responseObject withKey:errorMsg_key]?responseObject[errorMsg_key]:@"服务器未指明的错误" url:url];
+            AFHTTPError *http_error = [[AFHTTPError alloc] initWithErrorCode:[EFUtils stringFromDictionary:responseObject withKey:statusCode_key]?:@"-999" errorDescription:[EFUtils stringFromDictionary:responseObject withKey:message_key]?:@"服务器未指明的错误" url:url];
             result(NO, http_error);
         }
     } failure:^(NSURLSessionDataTask *_Nullable task, NSError *_Nonnull error) {
@@ -356,15 +365,31 @@ NSString *AFHTTPMethodTypeString(AFHTTPMethodType methodType) {
     requestProperties.result = result;
     [AFHTTPTool printRequestLog:requestProperties];
     
-    AFHTTPSessionManager *manager = [AFHTTPTool managerForRequestType:requestType authorized:authorized];
-    return [manager POST:url parameters:params progress:nil success:^(NSURLSessionDataTask *_Nonnull task, id _Nullable responseObject) {
+    AFHTTPSessionManager *manager = [AFHTTPTool managerForRequestType:requestType];
+    NSMutableDictionary *headers;
+    if (authorized) {
+        headers = [[NSMutableDictionary alloc] init];
+        NSString *token = [USER_DEFAULTS objectForKey:@"Token"];
+        if (token) {
+#if PrintResponseLog
+        LOG_FORMAT(@"----Header Token:%@----", STRING_FORMAT(@"Bearer %@", token));
+#endif
+            [headers setValue:STRING_FORMAT(@"Bearer %@", token) forKey:@"Authorization"];
+        }
+#if PrintResponseLog
+        else { // 开发时添加默认值，避免接口报错
+            [headers setValue:@"Bearer " forKey:@"Authorization"];
+        }
+#endif
+    }
+    return [manager POST:url parameters:params headers:headers progress:nil success:^(NSURLSessionDataTask *_Nonnull task, id _Nullable responseObject) {
         [AFHTTPTool printResponseLog:requestProperties response:responseObject];
         
-        if ([EFUtils objectValueIsEqualTo:0 dictionary:responseObject withKey:errorCode_key]) {
+        if ([EFUtils objectValueIsEqualTo:statusCode_success dictionary:responseObject withKey:statusCode_key]) {
             result(YES, responseObject);
         }
         else {
-            AFHTTPError *http_error = [[AFHTTPError alloc] initWithErrorCode:[EFUtils stringFromDictionary:responseObject withKey:errorCode_key]?:@"-999" errorDescription:![EFUtils objectIsNull:responseObject withKey:errorMsg_key]?responseObject[errorMsg_key]:@"服务器未指明的错误" url:url];
+            AFHTTPError *http_error = [[AFHTTPError alloc] initWithErrorCode:[EFUtils stringFromDictionary:responseObject withKey:statusCode_key]?:@"-999" errorDescription:[EFUtils stringFromDictionary:responseObject withKey:message_key]?:@"服务器未指明的错误" url:url];
             result(NO, http_error);
         }
     } failure:^(NSURLSessionDataTask *_Nullable task, NSError *_Nonnull error) {
@@ -389,15 +414,31 @@ NSString *AFHTTPMethodTypeString(AFHTTPMethodType methodType) {
     requestProperties.result = result;
     [AFHTTPTool printRequestLog:requestProperties];
     
-    AFHTTPSessionManager *manager = [AFHTTPTool managerForRequestType:requestType authorized:authorized];
-    return [manager PUT:url parameters:params success:^(NSURLSessionDataTask *_Nonnull task, id _Nullable responseObject) {
+    AFHTTPSessionManager *manager = [AFHTTPTool managerForRequestType:requestType];
+    NSMutableDictionary *headers;
+    if (authorized) {
+        headers = [[NSMutableDictionary alloc] init];
+        NSString *token = [USER_DEFAULTS objectForKey:@"Token"];
+        if (token) {
+#if PrintResponseLog
+        LOG_FORMAT(@"----Header Token:%@----", STRING_FORMAT(@"Bearer %@", token));
+#endif
+            [headers setValue:STRING_FORMAT(@"Bearer %@", token) forKey:@"Authorization"];
+        }
+#if PrintResponseLog
+        else { // 开发时添加默认值，避免接口报错
+            [headers setValue:@"Bearer " forKey:@"Authorization"];
+        }
+#endif
+    }
+    return [manager PUT:url parameters:params headers:headers success:^(NSURLSessionDataTask *_Nonnull task, id _Nullable responseObject) {
         [AFHTTPTool printResponseLog:requestProperties response:responseObject];
         
-        if ([EFUtils objectValueIsEqualTo:0 dictionary:responseObject withKey:errorCode_key]) {
+        if ([EFUtils objectValueIsEqualTo:statusCode_success dictionary:responseObject withKey:statusCode_key]) {
             result(YES, responseObject);
         }
         else {
-            AFHTTPError *http_error = [[AFHTTPError alloc] initWithErrorCode:[EFUtils stringFromDictionary:responseObject withKey:errorCode_key]?:@"-999" errorDescription:![EFUtils objectIsNull:responseObject withKey:errorMsg_key]?responseObject[errorMsg_key]:@"服务器未指明的错误" url:url];
+            AFHTTPError *http_error = [[AFHTTPError alloc] initWithErrorCode:[EFUtils stringFromDictionary:responseObject withKey:statusCode_key]?:@"-999" errorDescription:[EFUtils stringFromDictionary:responseObject withKey:message_key]?:@"服务器未指明的错误" url:url];
             result(NO, http_error);
         }
     } failure:^(NSURLSessionDataTask *_Nullable task, NSError *_Nonnull error) {
@@ -421,15 +462,31 @@ NSString *AFHTTPMethodTypeString(AFHTTPMethodType methodType) {
     requestProperties.result = result;
     [AFHTTPTool printRequestLog:requestProperties];
     
-    AFHTTPSessionManager *manager = [AFHTTPTool managerForRequestType:requestType authorized:authorized];
-    return [manager PATCH:url parameters:params success:^(NSURLSessionDataTask *_Nonnull task, id _Nullable responseObject) {
+    AFHTTPSessionManager *manager = [AFHTTPTool managerForRequestType:requestType];
+    NSMutableDictionary *headers;
+    if (authorized) {
+        headers = [[NSMutableDictionary alloc] init];
+        NSString *token = [USER_DEFAULTS objectForKey:@"Token"];
+        if (token) {
+#if PrintResponseLog
+        LOG_FORMAT(@"----Header Token:%@----", STRING_FORMAT(@"Bearer %@", token));
+#endif
+            [headers setValue:STRING_FORMAT(@"Bearer %@", token) forKey:@"Authorization"];
+        }
+#if PrintResponseLog
+        else { // 开发时添加默认值，避免接口报错
+            [headers setValue:@"Bearer " forKey:@"Authorization"];
+        }
+#endif
+    }
+    return [manager PATCH:url parameters:params headers:headers success:^(NSURLSessionDataTask *_Nonnull task, id _Nullable responseObject) {
         [AFHTTPTool printResponseLog:requestProperties response:responseObject];
         
-        if ([EFUtils objectValueIsEqualTo:0 dictionary:responseObject withKey:errorCode_key]) {
+        if ([EFUtils objectValueIsEqualTo:statusCode_success dictionary:responseObject withKey:statusCode_key]) {
             result(YES, responseObject);
         }
         else {
-            AFHTTPError *http_error = [[AFHTTPError alloc] initWithErrorCode:[EFUtils stringFromDictionary:responseObject withKey:errorCode_key]?:@"-999" errorDescription:![EFUtils objectIsNull:responseObject withKey:errorMsg_key]?responseObject[errorMsg_key]:@"服务器未指明的错误" url:url];
+            AFHTTPError *http_error = [[AFHTTPError alloc] initWithErrorCode:[EFUtils stringFromDictionary:responseObject withKey:statusCode_key]?:@"-999" errorDescription:[EFUtils stringFromDictionary:responseObject withKey:message_key]?:@"服务器未指明的错误" url:url];
             result(NO, http_error);
         }
     } failure:^(NSURLSessionDataTask *_Nullable task, NSError *_Nonnull error) {
@@ -453,15 +510,31 @@ NSString *AFHTTPMethodTypeString(AFHTTPMethodType methodType) {
     requestProperties.result = result;
     [AFHTTPTool printRequestLog:requestProperties];
     
-    AFHTTPSessionManager *manager = [AFHTTPTool managerForRequestType:requestType authorized:authorized];
-    return [manager DELETE:url parameters:params success:^(NSURLSessionDataTask *_Nonnull task, id _Nullable responseObject) {
+    AFHTTPSessionManager *manager = [AFHTTPTool managerForRequestType:requestType];
+    NSMutableDictionary *headers;
+    if (authorized) {
+        headers = [[NSMutableDictionary alloc] init];
+        NSString *token = [USER_DEFAULTS objectForKey:@"Token"];
+        if (token) {
+#if PrintResponseLog
+        LOG_FORMAT(@"----Header Token:%@----", STRING_FORMAT(@"Bearer %@", token));
+#endif
+            [headers setValue:STRING_FORMAT(@"Bearer %@", token) forKey:@"Authorization"];
+        }
+#if PrintResponseLog
+        else { // 开发时添加默认值，避免接口报错
+            [headers setValue:@"Bearer " forKey:@"Authorization"];
+        }
+#endif
+    }
+    return [manager DELETE:url parameters:params headers:headers success:^(NSURLSessionDataTask *_Nonnull task, id _Nullable responseObject) {
         [AFHTTPTool printResponseLog:requestProperties response:responseObject];
         
-        if ([EFUtils objectValueIsEqualTo:0 dictionary:responseObject withKey:errorCode_key]) {
+        if ([EFUtils objectValueIsEqualTo:statusCode_success dictionary:responseObject withKey:statusCode_key]) {
             result(YES, responseObject);
         }
         else {
-            AFHTTPError *http_error = [[AFHTTPError alloc] initWithErrorCode:[EFUtils stringFromDictionary:responseObject withKey:errorCode_key]?:@"-999" errorDescription:![EFUtils objectIsNull:responseObject withKey:errorMsg_key]?responseObject[errorMsg_key]:@"服务器未指明的错误" url:url];
+            AFHTTPError *http_error = [[AFHTTPError alloc] initWithErrorCode:[EFUtils stringFromDictionary:responseObject withKey:statusCode_key]?:@"-999" errorDescription:[EFUtils stringFromDictionary:responseObject withKey:message_key]?:@"服务器未指明的错误" url:url];
             result(NO, http_error);
         }
     } failure:^(NSURLSessionDataTask *_Nullable task, NSError *_Nonnull error) {

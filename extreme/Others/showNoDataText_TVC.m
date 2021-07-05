@@ -1,12 +1,12 @@
 //
-//  showNoDataText_TVC.m
+//  ShowNoDataText_TVC.m
 //  ExtremeFramework
 //
 //  Created by Fredericoyang on 2018/6/10.
-//  Copyright © 2017-2019 www.xfmwk.com. All rights reserved.
+//  Copyright © 2017-2021 www.xfmwk.com. All rights reserved.
 //
 
-#import "showNoDataText_TVC.h"
+#import "ShowNoDataText_TVC.h"
 
 @interface showNoDataText_TVC ()
 
@@ -17,7 +17,10 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    self.enableNoDataDebug = EFUIKit_enableDebug;
     self.noDataText = @"无数据";
+    self.noDataTextFont = [UIFont systemFontOfSize:18 weight:UIFontWeightMedium];
+    self.noDataTextColor = COLOR_HEXSTRING(@"#8888FF");
     [self showNoData];
 }
 
